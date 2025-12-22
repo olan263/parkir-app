@@ -1,33 +1,25 @@
 <?php
 
-// Aktifkan laporan error secara maksimal
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
 
-// Cek apakah file autoload ada
-$autoload = __DIR__ . '/../vendor/autoload.php';
-if (!file_exists($autoload)) {
-    die("Error: Folder vendor tidak ditemukan. Pastikan sudah ada .vercelignore berisi /vendor dan Vercel sudah menjalankan composer install.");
-}
+define('LARAVEL_START', microtime(true));
 
-require $autoload;
+// Load Autoloader
+require __DIR__.'/../vendor/autoload.php';
 
-// Cek apakah file bootstrap Laravel ada
-$appFile = __DIR__ . '/../bootstrap/app.php';
-if (!file_exists($appFile)) {
-    die("Error: File bootstrap/app.php tidak ditemukan.");
-}
+// Bootstrap Laravel
+/** @var Application $app */
+$app = require_once __DIR__.'/../bootstrap/app.php';
 
-$app = require_once $appFile;
-
-// Paksa folder storage ke /tmp agar tidak Error Permission di Vercel
+// Paksa folder storage ke /tmp karena Vercel bersifat read-only
 $app->useStoragePath('/tmp');
 
+// Handle Request dan Kirim Respon
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
 $response = $kernel->handle(
-    $request = Illuminate\Http\Request::capture()
+    $request = Request::capture()
 )->send();
 
 $kernel->terminate($request, $response);

@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Controllers\ParkingController;
+use Illuminate\Support\Facades\Route; // Pastikan ini ada
 
-Route::get('/', [ParkingController::class, 'index']);
+// Tambahkan ->name('parkir.index') di baris bawah ini
+Route::get('/', [ParkingController::class, 'index'])->name('parkir.index');
+
 Route::post('/masuk', [ParkingController::class, 'masuk'])->name('parkir.masuk');
 Route::post('/keluar', [ParkingController::class, 'keluar'])->name('parkir.keluar');
 Route::get('/parkir/export/pdf', [ParkingController::class, 'exportPDF'])->name('parkir.export.pdf');

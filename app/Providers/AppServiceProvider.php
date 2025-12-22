@@ -10,14 +10,12 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void
-    {
-        // Mengarahkan folder storage ke /tmp karena Vercel bersifat read-only
-        if (config('app.env') === 'production') {
-            $this->app->useStoragePath('/tmp');
-        }
+public function register(): void
+{
+    if (config('app.env') === 'production') {
+        $this->app->useStoragePath('/tmp');
     }
-
+}
     /**
      * Bootstrap any application services.
      */

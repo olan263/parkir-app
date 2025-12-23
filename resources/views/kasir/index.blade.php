@@ -6,6 +6,8 @@
     <title>Sistem Kasir Parkir Digital</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <style>
         body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .card { border: none; border-radius: 12px; transition: transform 0.2s; }
@@ -25,12 +27,6 @@
             border-radius: 8px;
         }
         .btn-loading { pointer-events: none; opacity: 0.7; }
-        
-        @media print {
-            body * { visibility: hidden; }
-            .print-section, .print-section * { visibility: visible; }
-            .print-section { position: absolute; left: 0; top: 0; width: 58mm; }
-        }
     </style>
 </head>
 <body>
@@ -44,13 +40,6 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
             <i class="fas fa-check-circle me-2"></i><strong>Berhasil!</strong> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i><strong>Gagal!</strong> {{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
@@ -108,9 +97,9 @@
                     @if(session('last_id'))
                         <div class="alert alert-light mt-3 border text-center shadow-sm">
                             <p class="mb-2 small fw-bold text-muted">TIKET BERHASIL DIBUAT!</p>
-                            <a href="{{ route('parkir.cetak.masuk', session('last_id')) }}" target="_blank" class="btn btn-dark btn-sm shadow-sm">
-                                <i class="fas fa-print"></i> CETAK TIKET SEKARANG
-                            </a>
+                            <button onclick="cetakTiketMasuk('{{ session('last_kode') }}', '{{ session('last_jenis') }}', '{{ date('d/m/Y H:i') }}')" class="btn btn-dark btn-sm shadow-sm">
+                                <i class="fas fa-file-pdf"></i> SIMPAN PDF TIKET
+                            </button>
                         </div>
                     @endif
                 </div>
@@ -137,13 +126,6 @@
                                 <span class="input-group-text bg-light fw-bold">Rp</span>
                                 <input type="number" name="bayar" id="inputBayar" placeholder="0" class="form-control form-control-lg shadow-sm text-danger fw-bold" required>
                             </div>
-                            <div class="mt-2 d-flex gap-1 flex-wrap">
-                                <button type="button" class="btn btn-quick-cash btn-outline-secondary" onclick="setBayar(2000)">2rb</button>
-                                <button type="button" class="btn btn-quick-cash btn-outline-secondary" onclick="setBayar(5000)">5rb</button>
-                                <button type="button" class="btn btn-quick-cash btn-outline-secondary" onclick="setBayar(10000)">10rb</button>
-                                <button type="button" class="btn btn-quick-cash btn-outline-secondary" onclick="setBayar(20000)">20rb</button>
-                                <button type="button" class="btn btn-quick-cash btn-outline-secondary" onclick="setBayar(50000)">50rb</button>
-                            </div>
                         </div>
                         <button type="submit" class="btn btn-danger btn-lg w-100 shadow btn-submit">
                             <i class="fas fa-calculator"></i> PROSES BAYAR
@@ -156,17 +138,13 @@
                             <div class="d-flex justify-content-between mb-1 small">
                                 <span>Kode:</span> <strong>{{ session('nota')['kode'] }}</strong>
                             </div>
-                            <div class="d-flex justify-content-between mb-1 small">
-                                <span>Durasi:</span> <strong>{{ session('nota')['durasi'] }}</strong>
-                            </div>
-                            <hr class="my-2">
                             <div class="d-flex justify-content-between mb-1 text-success">
                                 <span>Kembalian:</span> <strong class="fs-5">Rp {{ number_format(session('nota')['kembalian'], 0, ',', '.') }}</strong>
                             </div>
                             <div class="mt-3">
-                                <a href="{{ route('parkir.cetak.keluar', session('nota')['id']) }}" target="_blank" class="btn btn-dark w-100 shadow-sm">
-                                    <i class="fas fa-print"></i> CETAK NOTA KELUAR
-                                </a>
+                                <button onclick="cetakStrukUlang('{{ session('nota')['kode'] }}', '{{ session('nota')['plat'] }}', '{{ session('nota')['jenis'] }}', '{{ session('nota')['total'] }}')" class="btn btn-dark w-100 shadow-sm">
+                                    <i class="fas fa-file-pdf"></i> SIMPAN PDF STRUK
+                                </button>
                             </div>
                         </div>
                     @endif
@@ -179,131 +157,34 @@
         <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-info text-white py-3">
-                    <h5 class="mb-0"><i class="fas fa-hourglass-half"></i> Kendaraan Masih Parkir (Belum Bayar)</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="ps-4">Waktu Masuk</th>
-                                    <th>Kode Tiket</th>
-                                    <th>Jenis</th>
-                                    <th>Durasi</th>
-                                    <th>Total Tagihan</th>
-                                    <th class="pe-4 text-end">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($kendaraanAktif as $item)
-                                @php
-                                    $totalMenit = $item->waktu_masuk->diffInMinutes(now());
-                                    $jam = floor($totalMenit / 60);
-                                    $menit = $totalMenit % 60;
-                                    $durasiJamBulat = ceil($totalMenit / 60);
-                                    if ($durasiJamBulat == 0) $durasiJamBulat = 1;
-                                    $tarif = ($item->jenis == 'mobil') ? 5000 : 2000;
-                                    $totalTagihan = $durasiJamBulat * $tarif;
-                                @endphp
-                                <tr>
-                                    <td class="ps-4">
-                                        {{ $item->waktu_masuk->format('H:i') }} 
-                                        <small class="text-muted">({{ $item->waktu_masuk->diffForHumans() }})</small>
-                                    </td>
-                                    <td><code class="fw-bold text-primary">{{ $item->kode_tiket }}</code></td>
-                                    <td>
-                                        <span class="badge {{ $item->jenis == 'mobil' ? 'bg-primary' : 'bg-warning text-dark' }} px-3">
-                                            {{ strtoupper($item->jenis) }}
-                                        </span>
-                                    </td>
-                                    <td><span class="fw-bold">{{ $jam > 0 ? $jam . 'j ' : '' }}{{ $menit }}m</span></td>
-                                    <td><strong class="text-danger">Rp {{ number_format($totalTagihan, 0, ',', '.') }}</strong></td>
-                                    <td class="pe-4 text-end">
-                                        <div class="btn-group shadow-sm">
-                                            <button type="button" class="btn btn-sm btn-info text-white" 
-                                                    onclick="cetakTiketMasuk('{{ $item->kode_tiket }}', '{{ $item->jenis }}', '{{ $item->waktu_masuk->format('d/m/Y H:i') }}')" 
-                                                    title="Cetak Ulang Tiket Masuk">
-                                                <i class="fas fa-print"></i>
-                                            </button>
-                                            
-                                            <a href="{{ route('parkir.edit', $item->id) }}" class="btn btn-sm btn-warning text-white"><i class="fas fa-edit"></i></a>
-                                            
-                                            <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}', '{{ $totalTagihan }}')">
-                                                Keluar <i class="fas fa-arrow-up"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr><td colspan="6" class="text-center py-4 text-muted">Area parkir kosong.</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mt-5">
-        <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-history"></i> Riwayat Transaksi Hari Ini</h5>
-                    <div class="btn-group">
-                        <a href="{{ route('parkir.export.pdf') }}" class="btn btn-sm btn-outline-light"><i class="fas fa-file-pdf text-danger"></i> PDF</a>
-                        <a href="{{ route('parkir.export.excel') }}" class="btn btn-sm btn-outline-light"><i class="fas fa-file-excel text-success"></i> Excel</a>
-                    </div>
+                    <h5 class="mb-0"><i class="fas fa-hourglass-half"></i> Kendaraan Masih Parkir</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th class="ps-4">Kode</th>
-                                    <th>Plat Nomor</th>
+                                    <th class="ps-4">Waktu Masuk</th>
+                                    <th>Kode Tiket</th>
                                     <th>Jenis</th>
-                                    <th>Durasi</th>
-                                    <th>Total Bayar</th>
-                                    <th>Selesai</th>
-                                    <th class="pe-4 text-end">Aksi</th> 
+                                    <th class="pe-4 text-end">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($riwayat as $data)
+                                @foreach($kendaraanAktif as $item)
                                 <tr>
-                                    <td class="ps-4"><span class="badge bg-light text-primary border">#{{ $data->kode_tiket }}</span></td>
-                                    <td class="fw-bold text-uppercase">{{ $data->plat_nomor }}</td>
-                                    <td>{{ ucfirst($data->jenis) }}</td>
-                                    <td>
-                                        @php
-                                            $totalMenit = $data->waktu_masuk->diffInMinutes($data->waktu_keluar);
-                                            $jam = floor($totalMenit / 60);
-                                            $menit = $totalMenit % 60;
-                                        @endphp
-                                        {{ $jam > 0 ? $jam . 'j ' : '' }}{{ $menit }}m
-                                    </td>
-                                    <td class="text-success fw-bold">Rp {{ number_format($data->total_bayar, 0, ',', '.') }}</td>
-                                    <td class="text-muted small">{{ $data->waktu_keluar->format('H:i') }}</td>
+                                    <td class="ps-4">{{ $item->waktu_masuk->format('H:i') }}</td>
+                                    <td><code class="fw-bold text-primary">{{ $item->kode_tiket }}</code></td>
+                                    <td>{{ strtoupper($item->jenis) }}</td>
                                     <td class="pe-4 text-end">
-                                        <div class="btn-group">
-                                            <button type="button" class="btn btn-sm btn-outline-primary" 
-                                                    onclick="cetakStrukUlang('{{ $data->kode_tiket }}', '{{ $data->plat_nomor }}', '{{ $data->jenis }}', '{{ $data->total_bayar }}')">
-                                                <i class="fas fa-print"></i>
-                                            </button>
-                                            
-                                            <a href="{{ route('parkir.edit', $data->id) }}" class="btn btn-sm btn-outline-warning"><i class="fas fa-edit"></i></a>
-                                            
-                                            <form action="{{ route('parkir.destroy', $data->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus data?')">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                            </form>
-                                        </div>
+                                        <button class="btn btn-sm btn-info text-white" 
+                                                onclick="cetakTiketMasuk('{{ $item->kode_tiket }}', '{{ $item->jenis }}', '{{ $item->waktu_masuk->format('d/m/Y H:i') }}')">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}', '5000')">Bayar</button>
                                     </td>
                                 </tr>
-                                @empty
-                                <tr><td colspan="7" class="text-center py-4 text-muted">Belum ada transaksi selesai.</td></tr>
-                                @endforelse
+                                @endforeach
                             </tbody>
                         </table>
                     </div>
@@ -314,20 +195,76 @@
 </div>
 
 <script>
-    // Fungsi Set Nominal Cepat
-    function setBayar(amount) {
-        document.getElementById('inputBayar').value = amount;
+    // FUNGSI UTAMA: GENERATE PDF TIKET MASUK
+    function cetakTiketMasuk(kode, jenis, waktu) {
+        const element = document.createElement('div');
+        element.style.padding = "20px";
+        element.innerHTML = `
+            <div style="font-family: 'Courier New', monospace; width: 160px; text-align: center; color: black;">
+                <strong style="font-size: 16px;">TIKET PARKIR</strong><br>
+                <span>POS DIGITAL</span>
+                <hr style="border-top: 1px dashed #000;">
+                <div style="font-size: 20px; font-weight: bold; margin: 10px 0; border: 1px solid #000; padding: 5px;">
+                    ${kode}
+                </div>
+                <hr style="border-top: 1px dashed #000;">
+                <div style="font-size: 12px; text-align: left;">
+                    Jenis : ${jenis.toUpperCase()}<br>
+                    Masuk : ${waktu}
+                </div>
+                <hr style="border-top: 1px dashed #000;">
+                <p style="font-size: 10px;">Simpan tiket ini untuk<br>pembayaran saat keluar</p>
+            </div>
+        `;
+
+        const opt = {
+            margin: 0,
+            filename: 'Tiket-' + kode + '.pdf',
+            jsPDF: { unit: 'mm', format: [58, 80], orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
     }
 
-    // Fungsi Pilih Tiket dari Tabel Aktif ke Form Bayar
+    // FUNGSI UTAMA: GENERATE PDF STRUK PEMBAYARAN
+    function cetakStrukUlang(kode, plat, jenis, total) {
+        const element = document.createElement('div');
+        element.style.padding = "20px";
+        element.innerHTML = `
+            <div style="font-family: 'Courier New', monospace; width: 160px; text-align: center; color: black;">
+                <strong style="font-size: 14px;">POS PARKIR DIGITAL</strong><br>
+                <span style="font-size: 10px;">Struk Pembayaran</span>
+                <hr style="border-top: 1px dashed #000;">
+                <div style="font-size: 11px; text-align: left;">
+                    Kode  : ${kode}<br>
+                    Plat  : ${plat.toUpperCase()}<br>
+                    Jenis : ${jenis.toUpperCase()}
+                </div>
+                <hr style="border-top: 1px dashed #000;">
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 12px;">
+                    <span>TOTAL:</span>
+                    <span>Rp ${Number(total).toLocaleString('id-ID')}</span>
+                </div>
+                <hr style="border-top: 1px dashed #000;">
+                <div style="font-size: 10px; margin-top: 10px;">Terima Kasih</div>
+            </div>
+        `;
+
+        const opt = {
+            margin: 0,
+            filename: 'Struk-' + kode + '.pdf',
+            jsPDF: { unit: 'mm', format: [58, 100], orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+    }
+
+    function setBayar(amount) { document.getElementById('inputBayar').value = amount; }
+    
     function pilihTiket(kode, tagihan) {
         document.getElementById('inputKode').value = kode;
-        document.getElementById('inputBayar').value = tagihan; 
+        document.getElementById('inputBayar').value = tagihan;
         document.getElementById('inputPlat').focus();
-        document.getElementById('pembayaran-section').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Fungsi Loading saat Submit
     function showLoading(form) {
         const btn = form.querySelector('.btn-submit');
         if(btn) {
@@ -335,82 +272,8 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
         }
     }
-
-    // Auto close alert setelah 4 detik
-    setTimeout(function() {
-        let alerts = document.querySelectorAll('.alert-dismissible');
-        alerts.forEach(function(alert) {
-            let bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        });
-    }, 4000);
-
-    // FUNGSI 1: CETAK ULANG TIKET MASUK (UNTUK KENDARAAN AKTIF)
-    function cetakTiketMasuk(kode, jenis, waktu) {
-        const printWindow = window.open('', '_blank', 'width=300,height=450');
-        printWindow.document.write(`
-            <html>
-            <head>
-                <title>Tiket Masuk - ${kode}</title>
-                <style>
-                    body { font-family: 'Courier New', monospace; width: 58mm; padding: 10px; font-size: 12px; }
-                    .text-center { text-align: center; }
-                    .bold { font-weight: bold; }
-                    .line { border-top: 1px dashed #000; margin: 5px 0; }
-                    .barcode { font-size: 16px; margin: 10px 0; font-weight: bold; border: 1px solid #000; padding: 5px; display: inline-block; }
-                </style>
-            </head>
-            <body onload="window.print(); setTimeout(() => { window.close(); }, 500);">
-                <div class="text-center">
-                    <div class="bold" style="font-size: 14px;">TIKET PARKIR</div>
-                    <div class="line"></div>
-                    <div class="barcode">${kode}</div>
-                    <div class="line"></div>
-                    <div style="text-align: left;">
-                        Jenis : ${jenis.toUpperCase()}<br>
-                        Masuk : ${waktu}
-                    </div>
-                    <div class="line"></div>
-                    <p style="font-size: 10px;">Simpan tiket ini untuk<br>pembayaran saat keluar</p>
-                </div>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-    }
-
-    // FUNGSI 2: CETAK STRUK ULANG (UNTUK RIWAYAT PEMBAYARAN)
-    function cetakStrukUlang(kode, plat, jenis, total) {
-        const printWindow = window.open('', '_blank', 'width=300,height=600');
-        printWindow.document.write(`
-            <html>
-            <head>
-                <title>Cetak Tiket - ${kode}</title>
-                <style>
-                    body { font-family: 'Courier New', monospace; padding: 15px; width: 58mm; font-size: 12px; }
-                    .text-center { text-align: center; }
-                    .bold { font-weight: bold; }
-                    .line { border-top: 1px dashed black; margin: 8px 0; }
-                    .item { display: flex; justify-content: space-between; margin: 3px 0; }
-                </style>
-            </head>
-            <body onload="window.print(); setTimeout(() => { window.close(); }, 500);">
-                <div class="text-center bold" style="font-size: 14px;">POS PARKIR DIGITAL</div>
-                <div class="text-center">Struk Pembayaran (Salinan)</div>
-                <div class="line"></div>
-                <div class="item"><span>Kode:</span> <span>${kode}</span></div>
-                <div class="item"><span>Plat:</span> <span class="bold">${plat.toUpperCase()}</span></div>
-                <div class="item"><span>Jenis:</span> <span>${jenis.toUpperCase()}</span></div>
-                <div class="line"></div>
-                <div class="item bold"><span>TOTAL:</span> <span>Rp ${Number(total).toLocaleString('id-ID')}</span></div>
-                <div class="line"></div>
-                <div class="text-center" style="margin-top: 10px;">Terima Kasih Atas Kunjungan Anda</div>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-    }
 </script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

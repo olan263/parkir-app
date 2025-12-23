@@ -187,6 +187,7 @@
                                     <th>Kode Tiket</th>
                                     <th>Jenis</th>
                                     <th>Durasi Estimasi</th>
+                                    <th>Biaya Estimasi</th>
                                     <th class="pe-4 text-end">Aksi</th>
                                 </tr>
                             </thead>
@@ -206,10 +207,19 @@
                                     <td>
                                         @php
                                             $totalMenit = $item->waktu_masuk->diffInMinutes(now());
+                                            $totalJam = ceil($totalMenit / 60); 
+                                            if($totalJam <= 0) $totalJam = 1;
+
                                             $jam = floor($totalMenit / 60);
                                             $menit = $totalMenit % 60;
+
+                                            $tarif = ($item->jenis == 'mobil') ? 5000 : 2000;
+                                            $biayaEstimasi = $totalJam * $tarif;
                                         @endphp
                                         <span class="fw-bold">{{ $jam > 0 ? $jam . 'j ' : '' }}{{ $menit }}m</span>
+                                    </td>
+                                    <td>
+                                        <strong class="text-danger">Rp {{ number_format($biayaEstimasi, 0, ',', '.') }}</strong>
                                     </td>
                                     <td class="pe-4 text-end">
                                         <div class="btn-group shadow-sm">
@@ -217,14 +227,14 @@
                                                 <i class="fas fa-print"></i>
                                             </a>
                                             <a href="{{ route('parkir.edit', $item->id) }}" class="btn btn-sm btn-warning text-white"><i class="fas fa-edit"></i></a>
-                                            <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}')">
+                                            <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}', {{ $biayaEstimasi }})">
                                                 Keluar <i class="fas fa-arrow-up"></i>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="5" class="text-center py-4 text-muted">Area parkir kosong.</td></tr>
+                                <tr><td colspan="6" class="text-center py-4 text-muted">Area parkir kosong.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -307,8 +317,10 @@
         document.getElementById('inputBayar').value = amount;
     }
 
-    function pilihTiket(kode) {
+    function pilihTiket(kode, estimasi) {
         document.getElementById('inputKode').value = kode;
+        // Otomatis isi nominal bayar sesuai biaya estimasi
+        document.getElementById('inputBayar').value = estimasi;
         document.getElementById('inputPlat').focus();
         document.getElementById('pembayaran-section').scrollIntoView({ behavior: 'smooth' });
     }

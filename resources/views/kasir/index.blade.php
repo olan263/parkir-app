@@ -183,11 +183,22 @@
                                     <th>Kode Tiket</th>
                                     <th>Jenis</th>
                                     <th>Durasi</th>
-                                    <th class="pe-4 text-end">Aksi</th>
+                                    <th>Total Tagihan</th> <th class="pe-4 text-end">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($kendaraanAktif as $item)
+                                @php
+                                    // Hitung biaya real-time
+                                    $totalMenit = $item->waktu_masuk->diffInMinutes(now());
+                                    $jam = floor($totalMenit / 60);
+                                    $menit = $totalMenit % 60;
+                                    
+                                    $durasiJamBulat = ceil($totalMenit / 60);
+                                    if ($durasiJamBulat == 0) $durasiJamBulat = 1;
+                                    $tarif = ($item->jenis == 'mobil') ? 5000 : 2000;
+                                    $totalTagihan = $durasiJamBulat * $tarif;
+                                @endphp
                                 <tr>
                                     <td class="ps-4">
                                         {{ $item->waktu_masuk->format('H:i') }} 
@@ -200,24 +211,22 @@
                                         </span>
                                     </td>
                                     <td>
-                                        @php
-                                            $totalMenit = $item->waktu_masuk->diffInMinutes(now());
-                                            $jam = floor($totalMenit / 60);
-                                            $menit = $totalMenit % 60;
-                                        @endphp
                                         <span class="fw-bold">{{ $jam > 0 ? $jam . 'j ' : '' }}{{ $menit }}m</span>
+                                    </td>
+                                    <td>
+                                        <strong class="text-danger">Rp {{ number_format($totalTagihan, 0, ',', '.') }}</strong>
                                     </td>
                                     <td class="pe-4 text-end">
                                         <div class="btn-group shadow-sm">
                                             <a href="{{ route('parkir.edit', $item->id) }}" class="btn btn-sm btn-warning text-white"><i class="fas fa-edit"></i></a>
-                                            <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}')">
+                                            <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}', '{{ $totalTagihan }}')">
                                                 Keluar <i class="fas fa-arrow-up"></i>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="5" class="text-center py-4 text-muted">Area parkir kosong.</td></tr>
+                                <tr><td colspan="6" class="text-center py-4 text-muted">Area parkir kosong.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -263,11 +272,11 @@
                                     <td>{{ ucfirst($data->jenis) }}</td>
                                     <td>
                                         @php
-                                            $totalMenit = $data->waktu_masuk->diffInMinutes($data->waktu_keluar);
-                                            $jam = floor($totalMenit / 60);
-                                            $menit = $totalMenit % 60;
+                                            $totalMenitHistory = $data->waktu_masuk->diffInMinutes($data->waktu_keluar);
+                                            $jamH = floor($totalMenitHistory / 60);
+                                            $menitH = $totalMenitHistory % 60;
                                         @endphp
-                                        {{ $jam > 0 ? $jam . 'j ' : '' }}{{ $menit }}m
+                                        {{ $jamH > 0 ? $jamH . 'j ' : '' }}{{ $menitH }}m
                                     </td>
                                     <td class="text-success fw-bold">Rp {{ number_format($data->total_bayar, 0, ',', '.') }}</td>
                                     <td class="text-muted small">{{ $data->waktu_keluar->format('H:i') }}</td>
@@ -299,9 +308,14 @@
         document.getElementById('inputBayar').value = amount;
     }
 
-    function pilihTiket(kode) {
+    function pilihTiket(kode, harga) {
+        // Isi Kode Tiket
         document.getElementById('inputKode').value = kode;
+        // Isi Nominal Bayar Otomatis
+        document.getElementById('inputBayar').value = harga;
+        // Fokus ke input plat nomor agar kasir tinggal ketik plat
         document.getElementById('inputPlat').focus();
+        // Scroll halus ke form pembayaran
         document.getElementById('pembayaran-section').scrollIntoView({ behavior: 'smooth' });
     }
 

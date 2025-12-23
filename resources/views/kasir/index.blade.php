@@ -29,11 +29,9 @@
         .card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
         .stat-card { border-left: 6px solid; }
         
-        /* Table Styling */
         .table thead { background-color: #f8f9fa; }
         .table-hover tbody tr:hover { background-color: #f1f4ff; }
         
-        /* Button Styling */
         .btn-quick-cash { 
             font-size: 0.85rem; 
             padding: 6px 12px; 
@@ -59,11 +57,6 @@
             padding: 0.5em 1em;
             border-radius: 8px;
             font-weight: 600;
-        }
-
-        @media print {
-            body * { visibility: hidden; }
-            .print-section, .print-section * { visibility: visible; }
         }
     </style>
 </head>
@@ -115,7 +108,6 @@
 
     {{-- Main Action Section --}}
     <div class="row g-4" id="pembayaran-section">
-        {{-- Masuk Section --}}
         <div class="col-md-5">
             <div class="card h-100 border-top border-primary border-4">
                 <div class="card-header bg-white py-3">
@@ -140,7 +132,7 @@
                         <div class="alert alert-primary mt-3 text-center border-0 shadow-sm">
                             <p class="mb-2 small fw-bold">TIKET BARU: {{ session('last_kode') }}</p>
                             <button onclick="cetakTiketMasuk('{{ session('last_kode') }}', '{{ session('last_jenis') }}', '{{ date('d/m/Y H:i') }}')" class="btn btn-dark btn-sm w-100">
-                                <i class="fas fa-print me-2"></i>CETAK ULANG
+                                <i class="fas fa-file-pdf me-2"></i>BUKA PDF TIKET
                             </button>
                         </div>
                     @endif
@@ -148,7 +140,6 @@
             </div>
         </div>
 
-        {{-- Keluar Section --}}
         <div class="col-md-7">
             <div class="card h-100 border-top border-danger border-4">
                 <div class="card-header bg-white py-3">
@@ -194,7 +185,7 @@
                             <p class="mb-1 small text-muted text-uppercase">Kembalian Anda:</p>
                             <h2 class="fw-bold text-success mb-3">Rp {{ number_format(session('nota')['kembalian'], 0, ',', '.') }}</h2>
                             <button onclick="cetakStrukUlang('{{ session('nota')['kode'] }}', '{{ session('nota')['plat'] }}', '{{ session('nota')['jenis'] }}', '{{ session('nota')['total'] }}')" class="btn btn-dark w-100">
-                                <i class="fas fa-print me-2"></i>CETAK STRUK PEMBAYARAN
+                                <i class="fas fa-file-pdf me-2"></i>BUKA PDF STRUK
                             </button>
                         </div>
                     @endif
@@ -247,7 +238,7 @@
                         <td class="pe-4 text-end">
                             <div class="btn-group">
                                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="cetakTiketMasuk('{{ $item->kode_tiket }}', '{{ $item->jenis }}', '{{ $item->waktu_masuk->format('d/m/Y H:i') }}')">
-                                    <i class="fas fa-print"></i>
+                                    <i class="fas fa-file-pdf"></i>
                                 </button>
                                 <button class="btn btn-sm btn-danger px-3" onclick="pilihTiket('{{ $item->kode_tiket }}', '{{ $totalTagihan }}')">
                                     Bayar <i class="fas fa-arrow-right ms-1"></i>
@@ -268,8 +259,7 @@
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
             <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-history me-2"></i>Riwayat Transaksi Hari Ini</h5>
             <div class="btn-group shadow-sm">
-                <a href="{{ route('parkir.export.pdf') }}" class="btn btn-sm btn-outline-danger"><i class="fas fa-file-pdf me-1"></i>PDF</a>
-                <a href="{{ route('parkir.export.excel') }}" class="btn btn-sm btn-outline-success"><i class="fas fa-file-excel me-1"></i>Excel</a>
+                <a href="{{ route('parkir.export.pdf') }}" class="btn btn-sm btn-outline-danger"><i class="fas fa-file-pdf me-1"></i>Export PDF</a>
             </div>
         </div>
         <div class="table-responsive">
@@ -295,7 +285,7 @@
                         <td class="pe-4 text-end">
                             <button type="button" class="btn btn-sm btn-outline-primary" 
                                     onclick="cetakStrukUlang('{{ $data->kode_tiket }}', '{{ $data->plat_nomor }}', '{{ $data->jenis }}', '{{ $data->total_bayar }}')">
-                                <i class="fas fa-print"></i>
+                                <i class="fas fa-file-pdf"></i>
                             </button>
                         </td>
                     </tr>
@@ -308,14 +298,17 @@
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
+    const { jsPDF } = window.jspdf;
+
     function setBayar(amount) {
         document.getElementById('inputBayar').value = amount;
     }
 
     function hitungPas() {
-        // Logika untuk mengambil tagihan dari input atau variabel jika ada
         const totalTagihan = document.getElementById('inputBayar').getAttribute('data-tagihan');
         if(totalTagihan) document.getElementById('inputBayar').value = totalTagihan;
     }
@@ -336,64 +329,63 @@
         }
     }
 
+    // Fungsi Cetak Tiket Masuk (PDF)
     function cetakTiketMasuk(kode, jenis, waktu) {
-        const printWindow = window.open('', '_blank', 'width=300,height=450');
-        printWindow.document.write(`
-            <html>
-            <head>
-                <style>
-                    body { font-family: 'Courier New', monospace; width: 58mm; padding: 10px; font-size: 12px; }
-                    .text-center { text-align: center; }
-                    .line { border-top: 1px dashed #000; margin: 5px 0; }
-                    .barcode { font-size: 16px; margin: 10px 0; font-weight: bold; border: 1px solid #000; padding: 5px; display: inline-block; }
-                </style>
-            </head>
-            <body onload="window.print(); setTimeout(() => { window.close(); }, 500);">
-                <div class="text-center">
-                    <div style="font-weight:bold; font-size: 14px;">TIKET PARKIR</div>
-                    <div class="line"></div>
-                    <div class="barcode">${kode}</div>
-                    <div class="line"></div>
-                    <div style="text-align: left;">
-                        Jenis : ${jenis.toUpperCase()}<br>
-                        Masuk : ${waktu}
-                    </div>
-                    <div class="line"></div>
-                    <p style="font-size: 10px;">Simpan tiket untuk pembayaran</p>
-                </div>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
+        const doc = new jsPDF({
+            unit: 'mm',
+            format: [58, 80]
+        });
+
+        doc.setFont("courier", "bold");
+        doc.setFontSize(12);
+        doc.text("TIKET PARKIR", 29, 10, { align: "center" });
+        doc.setFontSize(10);
+        doc.text("--------------------------", 29, 15, { align: "center" });
+        
+        doc.setFontSize(16);
+        doc.text(kode, 29, 25, { align: "center" });
+        
+        doc.setFontSize(10);
+        doc.text("--------------------------", 29, 30, { align: "center" });
+        doc.setFont("courier", "normal");
+        doc.text(`Jenis : ${jenis.toUpperCase()}`, 5, 40);
+        doc.text(`Masuk : ${waktu}`, 5, 45);
+        doc.text("--------------------------", 29, 55, { align: "center" });
+        doc.setFontSize(8);
+        doc.text("Simpan tiket untuk pembayaran", 29, 60, { align: "center" });
+
+        window.open(doc.output('bloburl'), '_blank');
     }
 
+    // Fungsi Cetak Struk Keluar (PDF)
     function cetakStrukUlang(kode, plat, jenis, total) {
-        const printWindow = window.open('', '_blank', 'width=300,height=600');
-        printWindow.document.write(`
-            <html>
-            <head>
-                <style>
-                    body { font-family: 'Courier New', monospace; padding: 15px; width: 58mm; font-size: 12px; }
-                    .text-center { text-align: center; }
-                    .line { border-top: 1px dashed black; margin: 8px 0; }
-                    .item { display: flex; justify-content: space-between; margin: 3px 0; }
-                </style>
-            </head>
-            <body onload="window.print(); setTimeout(() => { window.close(); }, 500);">
-                <div class="text-center" style="font-weight:bold; font-size: 14px;">POS PARKIR DIGITAL</div>
-                <div class="text-center">Struk Pembayaran</div>
-                <div class="line"></div>
-                <div class="item"><span>Kode:</span> <span>${kode}</span></div>
-                <div class="item"><span>Plat:</span> <span>${plat.toUpperCase()}</span></div>
-                <div class="item"><span>Jenis:</span> <span>${jenis.toUpperCase()}</span></div>
-                <div class="line"></div>
-                <div class="item" style="font-weight:bold"><span>TOTAL:</span> <span>Rp ${Number(total).toLocaleString('id-ID')}</span></div>
-                <div class="line"></div>
-                <div class="text-center" style="margin-top: 10px;">Terima Kasih</div>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
+        const doc = new jsPDF({
+            unit: 'mm',
+            format: [58, 100]
+        });
+
+        doc.setFont("courier", "bold");
+        doc.setFontSize(12);
+        doc.text("POS PARKIR DIGITAL", 29, 10, { align: "center" });
+        doc.setFontSize(10);
+        doc.text("Struk Pembayaran", 29, 15, { align: "center" });
+        doc.text("--------------------------", 29, 20, { align: "center" });
+        
+        doc.setFont("courier", "normal");
+        doc.text(`Kode  : ${kode}`, 5, 30);
+        doc.text(`Plat  : ${plat.toUpperCase()}`, 5, 35);
+        doc.text(`Jenis : ${jenis.toUpperCase()}`, 5, 40);
+        doc.text("--------------------------", 29, 50, { align: "center" });
+        
+        doc.setFont("courier", "bold");
+        const totalIDR = "Rp " + Number(total).toLocaleString('id-ID');
+        doc.text(`TOTAL: ${totalIDR}`, 5, 60);
+        doc.text("--------------------------", 29, 70, { align: "center" });
+        
+        doc.setFontSize(10);
+        doc.text("Terima Kasih", 29, 80, { align: "center" });
+
+        window.open(doc.output('bloburl'), '_blank');
     }
 
     // Auto-close alert

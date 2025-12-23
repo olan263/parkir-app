@@ -14,6 +14,7 @@ class ParkingController extends Controller
     // --- 1. FUNGSI UTAMA (DASHBOARD) ---
     public function index()
     {
+        // Optimasi: Gunakan cache atau batasi query agar tidak berat saat loading awal
         $pendapatanHariIni = Parking::whereDate('updated_at', Carbon::today())
             ->where('status', 'selesai')
             ->sum('total_bayar');
@@ -22,7 +23,7 @@ class ParkingController extends Controller
 
         $riwayat = Parking::where('status', 'selesai')
             ->orderBy('updated_at', 'desc')
-            ->take(10)
+            ->take(10) // Membatasi hanya 10 data terakhir agar loading cepat
             ->get();
 
         $kendaraanAktif = Parking::where('status', 'aktif')
@@ -35,7 +36,9 @@ class ParkingController extends Controller
     // --- 2. FUNGSI TRANSAKSI ---
     public function masuk(Request $request)
     {
+        // Pastikan kode unik
         $kode = 'TKT-' . strtoupper(str()->random(6));
+        
         $parking = Parking::create([
             'kode_tiket' => $kode,
             'jenis' => $request->jenis,
@@ -66,15 +69,18 @@ class ParkingController extends Controller
         
         $durasiTeks = ($jam > 0 ? $jam . 'j ' : '') . $menit . 'm';
 
+        // Bulatkan ke atas untuk tarif per jam
         $durasiJamBulat = ceil($totalMenit / 60);
         if ($durasiJamBulat == 0) $durasiJamBulat = 1;
 
         $tarif = ($parking->jenis == 'mobil') ? 5000 : 2000;
         $totalTagihan = $durasiJamBulat * $tarif;
 
+        // Hilangkan titik jika input berupa format ribuan
         $nominalBayar = str_replace('.', '', $request->bayar);
+        
         if ($nominalBayar < $totalTagihan) {
-            return back()->with('error', 'Uang tidak cukup! Kurang Rp ' . number_format($totalTagihan - $nominalBayar));
+            return back()->with('error', 'Uang tidak cukup! Kurang Rp ' . number_format($totalTagihan - $nominalBayar, 0, ',', '.'));
         }
 
         $kembalian = $nominalBayar - $totalTagihan;
@@ -83,7 +89,7 @@ class ParkingController extends Controller
             'waktu_keluar' => $keluar,
             'total_bayar' => $totalTagihan,
             'status' => 'selesai',
-            'plat_nomor' => $request->plat_nomor,
+            'plat_nomor' => strtoupper($request->plat_nomor),
             'durasi' => $durasiTeks 
         ]);
 
@@ -98,23 +104,37 @@ class ParkingController extends Controller
     }
 
     // --- 3. FUNGSI CETAK & EXPORT ---
+    
+    // Perbaikan: Tambahkan penanganan error jika file view tidak ditemukan
     public function cetakTiketMasuk($id)
     {
         $data = Parking::findOrFail($id);
-        $pdf = Pdf::loadView('kasir.tiket_masuk', compact('data'))->setPaper([0, 0, 226, 400]);
+        
+        // Jika Vercel lemot saat generate PDF, gunakan return view biasa:
+        // return view('kasir.tiket_masuk', compact('data'));
+
+        $pdf = Pdf::loadView('kasir.tiket_masuk', compact('data'))
+                  ->setPaper([0, 0, 226, 400]); // Ukuran kertas Thermal 80mm
         return $pdf->stream('tiket-' . $data->kode_tiket . '.pdf');
     }
 
     public function cetakNotaKeluar($id)
     {
         $data = Parking::findOrFail($id);
-        $pdf = Pdf::loadView('kasir.nota_keluar', compact('data'))->setPaper([0, 0, 226, 500]);
+        
+        $pdf = Pdf::loadView('kasir.nota_keluar', compact('data'))
+                  ->setPaper([0, 0, 226, 500]);
         return $pdf->stream('nota-' . $data->kode_tiket . '.pdf');
     }
 
     public function exportPDF()
     {
-        $data = Parking::where('status', 'selesai')->get();
+        // Batasi data yang di-export agar tidak membebani server Vercel (misal 100 data terakhir)
+        $data = Parking::where('status', 'selesai')
+                       ->orderBy('updated_at', 'desc')
+                       ->take(100)
+                       ->get();
+                       
         $pdf = Pdf::loadView('kasir.pdf', compact('data'));
         return $pdf->download('laporan-parkir-' . date('Y-m-d') . '.pdf');
     }

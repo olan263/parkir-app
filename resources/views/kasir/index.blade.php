@@ -24,6 +24,7 @@
             background-color: #fffdf5;
             border-radius: 8px;
         }
+        .btn-loading { pointer-events: none; opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -84,7 +85,7 @@
                     <h5 class="card-title mb-0 text-primary fw-bold"><i class="fas fa-sign-in-alt"></i> Masuk (Ambil Tiket)</h5>
                 </div>
                 <div class="card-body p-4">
-                    <form action="{{ route('parkir.masuk') }}" method="POST">
+                    <form action="{{ route('parkir.masuk') }}" method="POST" onsubmit="showLoading(this)">
                         @csrf
                         <div class="mb-3">
                             <label class="form-label fw-bold">Pilih Jenis Kendaraan</label>
@@ -93,16 +94,16 @@
                                 <option value="mobil">🚗 Mobil (Rp 5.000/jam)</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-lg w-100 shadow">
+                        <button type="submit" class="btn btn-primary btn-lg w-100 shadow btn-submit">
                             <i class="fas fa-print"></i> PROSES MASUK
                         </button>
                     </form>
 
                     @if(session('last_id'))
                         <div class="alert alert-light mt-3 border text-center shadow-sm">
-                            <p class="mb-2 small fw-bold text-muted">TIKET TERBARU:</p>
+                            <p class="mb-2 small fw-bold text-muted">TIKET BERHASIL DIBUAT!</p>
                             <a href="{{ route('parkir.cetak.masuk', session('last_id')) }}" target="_blank" class="btn btn-dark btn-sm shadow-sm">
-                                <i class="fas fa-print"></i> CETAK TIKET FISIK
+                                <i class="fas fa-print"></i> CETAK TIKET SEKARANG
                             </a>
                         </div>
                     @endif
@@ -116,7 +117,7 @@
                     <h5 class="card-title mb-0 text-danger fw-bold"><i class="fas fa-cash-register"></i> Keluar (Pembayaran)</h5>
                 </div>
                 <div class="card-body p-4">
-                    <form action="{{ route('parkir.keluar') }}" method="POST">
+                    <form action="{{ route('parkir.keluar') }}" method="POST" onsubmit="showLoading(this)">
                         @csrf
                         <div class="mb-2">
                             <input type="text" name="kode_tiket" id="inputKode" placeholder="Kode Tiket (TKT-XXXX)" class="form-control form-control-lg shadow-sm" required>
@@ -138,7 +139,7 @@
                                 <button type="button" class="btn btn-quick-cash btn-outline-secondary" onclick="setBayar(50000)">50rb</button>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-danger btn-lg w-100 shadow">
+                        <button type="submit" class="btn btn-danger btn-lg w-100 shadow btn-submit">
                             <i class="fas fa-calculator"></i> PROSES BAYAR
                         </button>
                     </form>
@@ -183,17 +184,16 @@
                                     <th>Kode Tiket</th>
                                     <th>Jenis</th>
                                     <th>Durasi</th>
-                                    <th>Total Tagihan</th> <th class="pe-4 text-end">Aksi</th>
+                                    <th>Total Tagihan</th>
+                                    <th class="pe-4 text-end">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($kendaraanAktif as $item)
                                 @php
-                                    // Hitung biaya real-time
                                     $totalMenit = $item->waktu_masuk->diffInMinutes(now());
                                     $jam = floor($totalMenit / 60);
                                     $menit = $totalMenit % 60;
-                                    
                                     $durasiJamBulat = ceil($totalMenit / 60);
                                     if ($durasiJamBulat == 0) $durasiJamBulat = 1;
                                     $tarif = ($item->jenis == 'mobil') ? 5000 : 2000;
@@ -210,12 +210,8 @@
                                             {{ strtoupper($item->jenis) }}
                                         </span>
                                     </td>
-                                    <td>
-                                        <span class="fw-bold">{{ $jam > 0 ? $jam . 'j ' : '' }}{{ $menit }}m</span>
-                                    </td>
-                                    <td>
-                                        <strong class="text-danger">Rp {{ number_format($totalTagihan, 0, ',', '.') }}</strong>
-                                    </td>
+                                    <td><span class="fw-bold">{{ $jam > 0 ? $jam . 'j ' : '' }}{{ $menit }}m</span></td>
+                                    <td><strong class="text-danger">Rp {{ number_format($totalTagihan, 0, ',', '.') }}</strong></td>
                                     <td class="pe-4 text-end">
                                         <div class="btn-group shadow-sm">
                                             <a href="{{ route('parkir.edit', $item->id) }}" class="btn btn-sm btn-warning text-white"><i class="fas fa-edit"></i></a>
@@ -242,12 +238,8 @@
                 <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-history"></i> Riwayat Transaksi Hari Ini</h5>
                     <div class="btn-group">
-                        <a href="{{ route('parkir.export.pdf') }}" class="btn btn-sm btn-outline-light">
-                            <i class="fas fa-file-pdf text-danger"></i> PDF
-                        </a>
-                        <a href="{{ route('parkir.export.excel') }}" class="btn btn-sm btn-outline-light">
-                            <i class="fas fa-file-excel text-success"></i> Excel
-                        </a>
+                        <a href="{{ route('parkir.export.pdf') }}" class="btn btn-sm btn-outline-light"><i class="fas fa-file-pdf text-danger"></i> PDF</a>
+                        <a href="{{ route('parkir.export.excel') }}" class="btn btn-sm btn-outline-light"><i class="fas fa-file-excel text-success"></i> Excel</a>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -272,22 +264,21 @@
                                     <td>{{ ucfirst($data->jenis) }}</td>
                                     <td>
                                         @php
-                                            $totalMenitHistory = $data->waktu_masuk->diffInMinutes($data->waktu_keluar);
-                                            $jamH = floor($totalMenitHistory / 60);
-                                            $menitH = $totalMenitHistory % 60;
+                                            $totalMenit = $data->waktu_masuk->diffInMinutes($data->waktu_keluar);
+                                            $jam = floor($totalMenit / 60);
+                                            $menit = $totalMenit % 60;
                                         @endphp
-                                        {{ $jamH > 0 ? $jamH . 'j ' : '' }}{{ $menitH }}m
+                                        {{ $jam > 0 ? $jam . 'j ' : '' }}{{ $menit }}m
                                     </td>
                                     <td class="text-success fw-bold">Rp {{ number_format($data->total_bayar, 0, ',', '.') }}</td>
                                     <td class="text-muted small">{{ $data->waktu_keluar->format('H:i') }}</td>
                                     <td class="pe-4 text-end">
                                         <div class="btn-group">
                                             <a href="{{ route('parkir.edit', $data->id) }}" class="btn btn-sm btn-outline-warning"><i class="fas fa-edit"></i></a>
-                                            <form action="{{ route('parkir.destroy', $data->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus data ini?')">
+                                            <form action="{{ route('parkir.destroy', $data->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus data?')">
                                                 @csrf @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
                                             </form>
-                                            <a href="{{ route('parkir.cetak.keluar', $data->id) }}" target="_blank" class="btn btn-sm btn-dark"><i class="fas fa-receipt"></i></a>
                                         </div>
                                     </td>
                                 </tr>
@@ -308,18 +299,19 @@
         document.getElementById('inputBayar').value = amount;
     }
 
-    function pilihTiket(kode, harga) {
-        // Isi Kode Tiket
+    function pilihTiket(kode, tagihan) {
         document.getElementById('inputKode').value = kode;
-        // Isi Nominal Bayar Otomatis
-        document.getElementById('inputBayar').value = harga;
-        // Fokus ke input plat nomor agar kasir tinggal ketik plat
+        document.getElementById('inputBayar').value = tagihan; // Mengisi otomatis nominal bayar
         document.getElementById('inputPlat').focus();
-        // Scroll halus ke form pembayaran
         document.getElementById('pembayaran-section').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Menghilangkan alert otomatis setelah 4 detik
+    function showLoading(form) {
+        const btn = form.querySelector('.btn-submit');
+        btn.classList.add('btn-loading');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+    }
+
     setTimeout(function() {
         let alerts = document.querySelectorAll('.alert-dismissible');
         alerts.forEach(function(alert) {

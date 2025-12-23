@@ -25,6 +25,13 @@
             border-radius: 8px;
         }
         .btn-loading { pointer-events: none; opacity: 0.7; }
+        
+        /* Style khusus struk print */
+        @media print {
+            body * { visibility: hidden; }
+            .print-section, .print-section * { visibility: visible; }
+            .print-section { position: absolute; left: 0; top: 0; width: 58mm; }
+        }
     </style>
 </head>
 <body>
@@ -274,7 +281,13 @@
                                     <td class="text-muted small">{{ $data->waktu_keluar->format('H:i') }}</td>
                                     <td class="pe-4 text-end">
                                         <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                    onclick="cetakStrukUlang('{{ $data->kode_tiket }}', '{{ $data->plat_nomor }}', '{{ $data->jenis }}', '{{ $data->total_bayar }}')">
+                                                <i class="fas fa-print"></i>
+                                            </button>
+                                            
                                             <a href="{{ route('parkir.edit', $data->id) }}" class="btn btn-sm btn-outline-warning"><i class="fas fa-edit"></i></a>
+                                            
                                             <form action="{{ route('parkir.destroy', $data->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus data?')">
                                                 @csrf @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
@@ -295,23 +308,27 @@
 </div>
 
 <script>
+    // Fungsi Set Nominal Cepat
     function setBayar(amount) {
         document.getElementById('inputBayar').value = amount;
     }
 
+    // Fungsi Pilih Tiket dari Tabel Aktif ke Form Bayar
     function pilihTiket(kode, tagihan) {
         document.getElementById('inputKode').value = kode;
-        document.getElementById('inputBayar').value = tagihan; // Mengisi otomatis nominal bayar
+        document.getElementById('inputBayar').value = tagihan; 
         document.getElementById('inputPlat').focus();
         document.getElementById('pembayaran-section').scrollIntoView({ behavior: 'smooth' });
     }
 
+    // Fungsi Loading saat Submit
     function showLoading(form) {
         const btn = form.querySelector('.btn-submit');
         btn.classList.add('btn-loading');
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
     }
 
+    // Auto close alert setelah 4 detik
     setTimeout(function() {
         let alerts = document.querySelectorAll('.alert-dismissible');
         alerts.forEach(function(alert) {
@@ -319,6 +336,38 @@
             bsAlert.close();
         });
     }, 4000);
+
+    // FUNGSI CETAK STRUK ULANG (THERMAL STYLE)
+    function cetakStrukUlang(kode, plat, jenis, total) {
+        const printWindow = window.open('', '_blank', 'width=300,height=600');
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Cetak Tiket - ${kode}</title>
+                <style>
+                    body { font-family: 'Courier New', monospace; padding: 15px; width: 58mm; font-size: 12px; }
+                    .text-center { text-align: center; }
+                    .bold { font-weight: bold; }
+                    .line { border-top: 1px dashed black; margin: 8px 0; }
+                    .item { display: flex; justify-content: space-between; margin: 3px 0; }
+                </style>
+            </head>
+            <body onload="window.print(); setTimeout(() => { window.close(); }, 500);">
+                <div class="text-center bold" style="font-size: 14px;">POS PARKIR DIGITAL</div>
+                <div class="text-center">Struk Pembayaran (Salinan)</div>
+                <div class="line"></div>
+                <div class="item"><span>Kode:</span> <span>${kode}</span></div>
+                <div class="item"><span>Plat:</span> <span class="bold">${plat.toUpperCase()}</span></div>
+                <div class="item"><span>Jenis:</span> <span>${jenis.toUpperCase()}</span></div>
+                <div class="line"></div>
+                <div class="item bold"><span>TOTAL:</span> <span>Rp ${Number(total).toLocaleString('id-ID')}</span></div>
+                <div class="line"></div>
+                <div class="text-center" style="margin-top: 10px;">Terima Kasih Atas Kunjungan Anda</div>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

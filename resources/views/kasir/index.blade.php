@@ -21,7 +21,6 @@
         }
         .btn-loading { pointer-events: none; opacity: 0.7; }
         
-        /* Animasi untuk status aktif */
         .badge-active { animation: pulse 2s infinite; }
         @keyframes pulse {
             0% { opacity: 1; }
@@ -44,6 +43,7 @@
         <p class="text-muted">Manajemen operasional parkir real-time</p>
     </div>
 
+    {{-- Alert Notification --}}
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
             <i class="fas fa-check-circle me-2"></i><strong>Berhasil!</strong> {{ session('success') }}
@@ -58,13 +58,14 @@
         </div>
     @endif
 
+    {{-- Stats Cards --}}
     <div class="row g-4 mb-5">
         <div class="col-md-6">
             <div class="card stat-card border-success shadow-sm bg-white">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="text-muted text-uppercase mb-1">Pendapatan Hari Ini</h6>
-                        <h2 class="fw-bold mb-0 text-success">Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}</h2>
+                        <h2 class="fw-bold mb-0 text-success">Rp {{ number_format($pendapatanHariIni ?? 0, 0, ',', '.') }}</h2>
                     </div>
                     <div class="bg-success bg-opacity-10 p-3 rounded-circle">
                         <i class="fas fa-wallet fa-2x text-success"></i>
@@ -77,7 +78,7 @@
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="text-muted text-uppercase mb-1">Kendaraan di Dalam</h6>
-                        <h2 class="fw-bold mb-0 text-info">{{ $kendaraanDiDalam }} <small class="text-muted fs-6">Unit</small></h2>
+                        <h2 class="fw-bold mb-0 text-info">{{ $kendaraanDiDalam ?? 0 }} <small class="text-muted fs-6">Unit</small></h2>
                     </div>
                     <div class="bg-info bg-opacity-10 p-3 rounded-circle">
                         <i class="fas fa-car fa-2x text-info"></i>
@@ -87,7 +88,9 @@
         </div>
     </div>
 
+    {{-- Main Action Section --}}
     <div class="row g-4" id="pembayaran-section">
+        {{-- Masuk Section --}}
         <div class="col-md-6">
             <div class="card shadow-sm h-100 border-top border-primary border-4">
                 <div class="card-header bg-white py-3">
@@ -108,7 +111,8 @@
                         </button>
                     </form>
 
-                    @if(session('last_id'))
+                    {{-- Tombol Cetak jika baru saja input --}}
+                    @if(session('last_kode'))
                         <div class="alert alert-light mt-3 border text-center shadow-sm">
                             <p class="mb-2 small fw-bold text-muted">TIKET BERHASIL DIBUAT!</p>
                             <button onclick="cetakTiketMasuk('{{ session('last_kode') }}', '{{ session('last_jenis') }}', '{{ date('d/m/Y H:i') }}')" class="btn btn-dark btn-sm shadow-sm">
@@ -120,6 +124,7 @@
             </div>
         </div>
 
+        {{-- Keluar Section --}}
         <div class="col-md-6">
             <div class="card shadow-sm h-100 border-top border-danger border-4">
                 <div class="card-header bg-white py-3">
@@ -153,6 +158,7 @@
                         </button>
                     </form>
 
+                    {{-- Struk Keluar --}}
                     @if(session('nota'))
                         <div class="alert nota-container mt-4 shadow-sm p-3">
                             <h6 class="fw-bold border-bottom pb-2 text-center text-dark"><i class="fas fa-receipt"></i> BUKTI PEMBAYARAN</h6>
@@ -174,6 +180,7 @@
         </div>
     </div>
 
+    {{-- Active Parking List --}}
     <div class="row mt-5">
         <div class="col-12">
             <div class="card shadow-sm border-0">
@@ -239,6 +246,7 @@
         </div>
     </div>
 
+    {{-- Transaction History --}}
     <div class="row mt-5">
         <div class="col-12">
             <div class="card shadow-sm border-0">
@@ -310,7 +318,6 @@
         }
     }
 
-    // Fungsi Cetak Tiket Masuk
     function cetakTiketMasuk(kode, jenis, waktu) {
         const printWindow = window.open('', '_blank', 'width=300,height=450');
         printWindow.document.write(`
@@ -342,7 +349,6 @@
         printWindow.document.close();
     }
 
-    // Fungsi Cetak Struk Keluar
     function cetakStrukUlang(kode, plat, jenis, total) {
         const printWindow = window.open('', '_blank', 'width=300,height=600');
         printWindow.document.write(`
@@ -372,7 +378,6 @@
         printWindow.document.close();
     }
 
-    // Auto-close alerts
     setTimeout(() => {
         document.querySelectorAll('.alert-dismissible').forEach(el => {
             const alert = bootstrap.Alert.getOrCreateInstance(el);

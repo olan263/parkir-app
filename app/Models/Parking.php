@@ -16,35 +16,12 @@ class Parking extends Model
         'waktu_masuk',
         'waktu_keluar',
         'total_bayar',
-        'status',
-        'durasi' 
+        'status'
     ];
 
-    /**
-     * Casting atribut ke tipe data Carbon/DateTime.
-     * Ini memungkinkan Anda melakukan: $parking->waktu_masuk->diffInHours()
-     */
+    // TAMBAHKAN INI: Memberitahu Laravel bahwa ini adalah tanggal/waktu
     protected $casts = [
         'waktu_masuk' => 'datetime',
         'waktu_keluar' => 'datetime',
-        'total_bayar' => 'integer',
     ];
-
-    /**
-     * SCOPE: Memudahkan pemanggilan data yang statusnya masih aktif
-     * Penggunaan: Parking::aktif()->get();
-     */
-    public function scopeAktif($query)
-    {
-        return $query->where('status', 'aktif');
-    }
-
-    /**
-     * SCOPE: Memudahkan pemanggilan data yang sudah selesai
-     * Penggunaan: Parking::selesai()->get();
-     */
-    public function scopeSelesai($query)
-    {
-        return $query->where('status', 'selesai');
-    }
 }

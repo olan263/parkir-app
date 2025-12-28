@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Kasir Parkir Digital</title>
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <style>
         body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .card { border: none; border-radius: 12px; transition: transform 0.2s; }
@@ -16,13 +14,11 @@
         .table thead { background-color: #212529; color: white; }
         .btn-quick-cash { font-size: 0.8rem; padding: 2px 8px; }
         .badge-active { animation: pulse 2s infinite; }
-        
         @keyframes pulse {
             0% { opacity: 1; }
             50% { opacity: 0.5; }
             100% { opacity: 1; }
         }
-        
         .nota-container {
             border: 2px dashed #ffc107;
             background-color: #fffdf5;
@@ -57,7 +53,7 @@
             <div class="card stat-card border-success shadow-sm bg-white">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted text-uppercase mb-1 small">Pendapatan Hari Ini</h6>
+                        <h6 class="text-muted text-uppercase mb-1">Pendapatan Hari Ini</h6>
                         <h2 class="fw-bold mb-0 text-success">Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}</h2>
                     </div>
                     <div class="bg-success bg-opacity-10 p-3 rounded-circle">
@@ -70,7 +66,7 @@
             <div class="card stat-card border-info shadow-sm bg-white">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted text-uppercase mb-1 small">Kendaraan di Dalam</h6>
+                        <h6 class="text-muted text-uppercase mb-1">Kendaraan di Dalam</h6>
                         <h2 class="fw-bold mb-0 text-info">{{ $kendaraanDiDalam }} <small class="text-muted fs-6">Unit</small></h2>
                     </div>
                     <div class="bg-info bg-opacity-10 p-3 rounded-circle">
@@ -176,7 +172,7 @@
         <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-info text-white py-3">
-                    <h5 class="mb-0 small fw-bold"><i class="fas fa-hourglass-half"></i> KENDARAAN MASIH PARKIR</h5>
+                    <h5 class="mb-0"><i class="fas fa-hourglass-half"></i> Kendaraan Masih Parkir (Belum Bayar)</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -186,8 +182,7 @@
                                     <th class="ps-4">Waktu Masuk</th>
                                     <th>Kode Tiket</th>
                                     <th>Jenis</th>
-                                    <th>Durasi Estimasi</th>
-                                    <th>Biaya Estimasi</th>
+                                    <th>Durasi</th>
                                     <th class="pe-4 text-end">Aksi</th>
                                 </tr>
                             </thead>
@@ -207,34 +202,22 @@
                                     <td>
                                         @php
                                             $totalMenit = $item->waktu_masuk->diffInMinutes(now());
-                                            $totalJam = ceil($totalMenit / 60); 
-                                            if($totalJam <= 0) $totalJam = 1;
-
                                             $jam = floor($totalMenit / 60);
                                             $menit = $totalMenit % 60;
-
-                                            $tarif = ($item->jenis == 'mobil') ? 5000 : 2000;
-                                            $biayaEstimasi = $totalJam * $tarif;
                                         @endphp
                                         <span class="fw-bold">{{ $jam > 0 ? $jam . 'j ' : '' }}{{ $menit }}m</span>
                                     </td>
-                                    <td>
-                                        <strong class="text-danger">Rp {{ number_format($biayaEstimasi, 0, ',', '.') }}</strong>
-                                    </td>
                                     <td class="pe-4 text-end">
                                         <div class="btn-group shadow-sm">
-                                            <a href="{{ route('parkir.cetak.masuk', $item->id) }}" target="_blank" class="btn btn-sm btn-dark" title="Cetak Ulang Tiket">
-                                                <i class="fas fa-print"></i>
-                                            </a>
                                             <a href="{{ route('parkir.edit', $item->id) }}" class="btn btn-sm btn-warning text-white"><i class="fas fa-edit"></i></a>
-                                            <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}', {{ $biayaEstimasi }})">
+                                            <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}')">
                                                 Keluar <i class="fas fa-arrow-up"></i>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="6" class="text-center py-4 text-muted">Area parkir kosong.</td></tr>
+                                <tr><td colspan="5" class="text-center py-4 text-muted">Area parkir kosong.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -248,7 +231,7 @@
         <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 small fw-bold"><i class="fas fa-history"></i> RIWAYAT TRANSAKSI HARI INI</h5>
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Riwayat Transaksi Hari Ini</h5>
                     <div class="btn-group">
                         <a href="{{ route('parkir.export.pdf') }}" class="btn btn-sm btn-outline-light">
                             <i class="fas fa-file-pdf text-danger"></i> PDF
@@ -311,21 +294,18 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     function setBayar(amount) {
         document.getElementById('inputBayar').value = amount;
     }
 
-    function pilihTiket(kode, estimasi) {
+    function pilihTiket(kode) {
         document.getElementById('inputKode').value = kode;
-        // Otomatis isi nominal bayar sesuai biaya estimasi
-        document.getElementById('inputBayar').value = estimasi;
         document.getElementById('inputPlat').focus();
         document.getElementById('pembayaran-section').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Auto-dismiss alerts after 4 seconds
+    // Menghilangkan alert otomatis setelah 4 detik
     setTimeout(function() {
         let alerts = document.querySelectorAll('.alert-dismissible');
         alerts.forEach(function(alert) {
@@ -334,6 +314,6 @@
         });
     }, 4000);
 </script>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

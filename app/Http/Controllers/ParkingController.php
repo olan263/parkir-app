@@ -6,54 +6,36 @@ use Illuminate\Http\Request;
 use App\Models\Parking;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ParkingExport;
 
 class ParkingController extends Controller
 {
-    /**
-     * 1. DASHBOARD ADMIN
-     */
-    public function indexAdmin()
+    // --- 1. FUNGSI UTAMA (DASHBOARD) ---
+    public function index()
     {
-        // Menghitung pendapatan selesai bulan ini
-        $totalPendapatanBulanIni = Parking::where('status', 'selesai')
-            ->whereMonth('waktu_keluar', Carbon::now()->month)
-            ->whereYear('waktu_keluar', Carbon::now()->year)
+        $pendapatanHariIni = Parking::whereDate('updated_at', Carbon::today())
+            ->where('status', 'selesai')
             ->sum('total_bayar');
 
-        $totalKendaraanHariIni = Parking::whereDate('waktu_masuk', Carbon::today())->count();
-        
-        $statsJenis = [
-            'mobil' => Parking::where('jenis', 'mobil')->where('status', 'aktif')->count(),
-            'motor' => Parking::where('jenis', 'motor')->where('status', 'aktif')->count(),
-        ];
-
-        $semuaTransaksi = Parking::orderBy('created_at', 'desc')->paginate(10);
-
-        return view('admin.dashboard', compact(
-            'totalPendapatanBulanIni', 
-            'totalKendaraanHariIni', 
-            'statsJenis', 
-            'semuaTransaksi'
-        ));
-    }
-
-    /**
-     * 2. GATE MASUK
-     */
-    public function indexMasuk() {
         $kendaraanDiDalam = Parking::where('status', 'aktif')->count();
-        return view('kasir.masuk', compact('kendaraanDiDalam'));
+
+        $riwayat = Parking::where('status', 'selesai')
+            ->orderBy('updated_at', 'desc')
+            ->take(10)
+            ->get();
+
+        $kendaraanAktif = Parking::where('status', 'aktif')
+            ->orderBy('waktu_masuk', 'desc')
+            ->get();
+
+        return view('kasir.index', compact('pendapatanHariIni', 'kendaraanDiDalam', 'riwayat', 'kendaraanAktif'));
     }
 
-    public function masuk(Request $request) {
-        $request->validate(['jenis' => 'required|in:motor,mobil']);
-
-        // Generate kode tiket unik
-        do {
-            $kode = 'TKT-' . strtoupper(Str::random(6));
-        } while (Parking::where('kode_tiket', $kode)->exists());
-        
+    // --- 2. FUNGSI TRANSAKSI ---
+    public function masuk(Request $request)
+    {
+        $kode = 'TKT-' . strtoupper(str()->random(6));
         $parking = Parking::create([
             'kode_tiket' => $kode,
             'jenis' => $request->jenis,
@@ -61,105 +43,116 @@ class ParkingController extends Controller
             'status' => 'aktif'
         ]);
 
-        return redirect()->back()->with([
-            'success' => "Tiket $kode berhasil dibuat!",
+        return back()->with([
+            'success' => "Tiket berhasil dibuat! KODE: $kode",
             'last_id' => $parking->id 
         ]);
     }
 
-    /**
-     * 3. GATE KELUAR
-     */
-    public function indexKeluar() {
-        $pendapatanHariIni = Parking::where('status', 'selesai')
-            ->whereDate('waktu_keluar', Carbon::today())
-            ->sum('total_bayar');
-            
-        $kendaraanAktif = Parking::where('status', 'aktif')
-            ->orderBy('waktu_masuk', 'desc')
-            ->get();
-
-        return view('kasir.keluar', compact('pendapatanHariIni', 'kendaraanAktif'));
-    }
-
-    public function keluar(Request $request) {
-        $request->validate([
-            'kode_tiket' => 'required',
-            'plat_nomor' => 'required|string',
-            'bayar' => 'required'
-        ]);
-
+    public function keluar(Request $request)
+    {
         $parking = Parking::where('kode_tiket', $request->kode_tiket)
             ->where('status', 'aktif')
             ->first();
 
-        if (!$parking) return back()->with('error', 'Tiket tidak ditemukan atau sudah keluar!');
+        if (!$parking) return back()->with('error', 'Tiket tidak ditemukan atau sudah dibayar.');
 
-        // Hitung Durasi & Tarif
-        $waktuMasuk = Carbon::parse($parking->waktu_masuk);
-        $waktuKeluar = now();
-        $totalMenit = $waktuMasuk->diffInMinutes($waktuKeluar);
-        $durasiJam = ceil($totalMenit / 60) ?: 1; // Minimal 1 jam
+        $masuk = Carbon::parse($parking->waktu_masuk);
+        $keluar = now();
+
+        $totalMenit = $masuk->diffInMinutes($keluar);
+        $jam = floor($totalMenit / 60);
+        $menit = $totalMenit % 60;
         
+        $durasiTeks = ($jam > 0 ? $jam . 'j ' : '') . $menit . 'm';
+
+        $durasiJamBulat = ceil($totalMenit / 60);
+        if ($durasiJamBulat == 0) $durasiJamBulat = 1;
+
         $tarif = ($parking->jenis == 'mobil') ? 5000 : 2000;
-        $totalTagihan = $durasiJam * $tarif;
+        $totalTagihan = $durasiJamBulat * $tarif;
 
-        // Bersihkan input bayar dari karakter non-angka
-        $nominalBayar = (int) preg_replace('/[^0-9]/', '', $request->bayar);
-        
+        $nominalBayar = str_replace('.', '', $request->bayar);
         if ($nominalBayar < $totalTagihan) {
-            return back()->with('error', 'Uang tidak cukup! Total tagihan: Rp ' . number_format($totalTagihan));
+            return back()->with('error', 'Uang tidak cukup! Kurang Rp ' . number_format($totalTagihan - $nominalBayar));
         }
 
-        // Simpan data keluar
+        $kembalian = $nominalBayar - $totalTagihan;
+
         $parking->update([
-            'waktu_keluar' => $waktuKeluar,
+            'waktu_keluar' => $keluar,
             'total_bayar' => $totalTagihan,
             'status' => 'selesai',
-            'plat_nomor' => strtoupper($request->plat_nomor),
-            'durasi' => floor($totalMenit/60).'j '.($totalMenit%60).'m'
+            'plat_nomor' => $request->plat_nomor,
+            'durasi' => $durasiTeks 
         ]);
 
-        return redirect()->back()->with([
-            'success' => 'Pembayaran Berhasil! Kembalian: Rp ' . number_format($nominalBayar - $totalTagihan),
-            'print_nota_id' => $parking->id
+        return back()->with('nota', [
+            'id' => $parking->id,
+            'kode' => $parking->kode_tiket,
+            'total' => $totalTagihan,
+            'durasi' => $durasiTeks,
+            'bayar' => $nominalBayar,
+            'kembalian' => $kembalian
         ]);
     }
 
-    /**
-     * 4. PRINTING & EXPORT
-     */
-    public function cetakTiketMasuk($id) {
+    // --- 3. FUNGSI CETAK & EXPORT ---
+    public function cetakTiketMasuk($id)
+    {
         $data = Parking::findOrFail($id);
-        // Ukuran kertas thermal standar (58mm/80mm)
-        $pdf = Pdf::loadView('kasir.tiket_masuk', compact('data'))->setPaper([0, 0, 226, 450]);
-        return $pdf->stream('tiket-'.$data->kode_tiket.'.pdf');
+        $pdf = Pdf::loadView('kasir.tiket_masuk', compact('data'))->setPaper([0, 0, 226, 400]);
+        return $pdf->stream('tiket-' . $data->kode_tiket . '.pdf');
     }
 
-    public function cetakNotaKeluar($id) {
+    public function cetakNotaKeluar($id)
+    {
         $data = Parking::findOrFail($id);
-        $pdf = Pdf::loadView('kasir.nota_keluar', compact('data'))->setPaper([0, 0, 226, 600]);
-        return $pdf->stream('nota-'.$data->kode_tiket.'.pdf');
+        $pdf = Pdf::loadView('kasir.nota_keluar', compact('data'))->setPaper([0, 0, 226, 500]);
+        return $pdf->stream('nota-' . $data->kode_tiket . '.pdf');
     }
 
-    public function exportPDF() {
-        $semuaTransaksi = Parking::where('status', 'selesai')->get();
-        $pdf = Pdf::loadView('admin.laporan_pdf', compact('semuaTransaksi'))->setPaper('a4', 'landscape');
-        return $pdf->stream('laporan-parkir-'.date('Y-m-d').'.pdf');
+    public function exportPDF()
+    {
+        $data = Parking::where('status', 'selesai')->get();
+        $pdf = Pdf::loadView('kasir.pdf', compact('data'));
+        return $pdf->download('laporan-parkir-' . date('Y-m-d') . '.pdf');
     }
 
-    /**
-     * 5. CRUD MANAGEMENT
-     */
-    public function update(Request $request, $id) {
+    public function exportExcel()
+    {
+        return Excel::download(new ParkingExport, 'laporan-parkir.xlsx');
+    }
+
+    // --- 4. FUNGSI CRUD TAMBAHAN ---
+    public function edit($id)
+    {
         $parking = Parking::findOrFail($id);
-        // Validasi input manual untuk keamanan
-        $parking->update($request->only(['plat_nomor', 'jenis', 'status', 'total_bayar']));
-        return redirect()->route('admin.dashboard')->with('success', 'Data berhasil diperbarui!');
+        return view('kasir.edit', compact('parking'));
     }
 
-    public function destroy($id) {
-        Parking::findOrFail($id)->delete();
-        return back()->with('success', 'Data parkir berhasil dihapus!');
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'plat_nomor' => 'required|string|max:20',
+            'jenis' => 'required|in:motor,mobil',
+            'status' => 'required|in:aktif,selesai'
+        ]);
+
+        $parking = Parking::findOrFail($id);
+        $parking->update([
+            'plat_nomor' => strtoupper($request->plat_nomor),
+            'jenis' => $request->jenis,
+            'status' => $request->status,
+        ]);
+
+        return redirect()->route('parkir.index')->with('success', 'Data parkir berhasil diperbarui!');
+    }
+
+    public function destroy($id)
+    {
+        $parking = Parking::findOrFail($id);
+        $parking->delete();
+        return back()->with('success', 'Data transaksi berhasil dihapus.');
     }
 }

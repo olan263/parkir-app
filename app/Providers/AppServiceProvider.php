@@ -4,7 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\URL; // Tambahkan ini
+use Illuminate\Support\Facades\URL;
+use Illuminate\Pagination\Paginator; // 1. TAMBAHKAN INI
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,5 +31,8 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.env') !== 'local') {
             URL::forceScheme('https');
         }
+
+        // 2. TAMBAHKAN INI UNTUK MEMPERBAIKI PAGINATION
+        Paginator::useBootstrapFive(); 
     }
 }

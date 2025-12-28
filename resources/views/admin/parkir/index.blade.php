@@ -4,7 +4,7 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
         <p class="text-gray-500 text-sm uppercase font-bold">Total Parkir</p>
-        <h3 class="text-3xl font-bold">{{ count($data) }}</h3>
+        <h3 class="text-3xl font-bold">{{ $data->total() }}</h3>
     </div>
     <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
         <p class="text-gray-500 text-sm uppercase font-bold">Pendapatan</p>
@@ -38,7 +38,9 @@
             <tbody class="divide-y divide-gray-200">
                 @foreach($data as $item)
                 <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4">{{ $loop->iteration }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        {{ ($data->currentPage() - 1) * $data->perPage() + $loop->iteration }}
+                    </td>
                     <td class="px-6 py-4 font-mono font-bold text-blue-600">{{ $item->kode_tiket }}</td>
                     <td class="px-6 py-4 font-semibold uppercase">{{ $item->plat_nomor }}</td>
                     <td class="px-6 py-4 text-gray-600">{{ $item->jenis_kendaraan }}</td>
@@ -53,5 +55,37 @@
             </tbody>
         </table>
     </div>
+
+    <div class="p-6 bg-gray-50 border-t custom-pagination">
+        {{ $data->links() }}
+    </div>
 </div>
+
+<style>
+    /* Paksa ikon panah pagination menjadi kecil */
+    .custom-pagination svg {
+        width: 20px !important;
+        height: 20px !important;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    /* Merapikan layout info pagination */
+    .custom-pagination nav > div:first-child {
+        display: none; /* Sembunyikan teks "Showing X to Y" di mobile jika terlalu penuh */
+    }
+
+    @media (min-width: 768px) {
+        .custom-pagination nav > div:first-child {
+            display: flex;
+        }
+    }
+
+    /* Memberi jarak antar nomor halaman */
+    .custom-pagination span[aria-current="page"] span,
+    .custom-pagination a {
+        padding: 8px 14px !important;
+        border-radius: 6px;
+    }
+</style>
 @endsection

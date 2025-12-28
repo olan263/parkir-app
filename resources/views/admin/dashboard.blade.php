@@ -1,83 +1,105 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('content')
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold text-primary"><i class="fas fa-user-shield me-2"></i>ADMIN DASHBOARD</h2>
-        <div class="btn-group">
-            <a href="{{ route('parkir.export.pdf') }}" class="btn btn-danger"><i class="fas fa-file-pdf me-1"></i> Cetak Laporan</a>
-            <a href="{{ route('parkir.export.excel') }}" class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Excel</a>
-        </div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+        <p class="text-gray-500 text-xs uppercase font-bold">Pendapatan Bulan Ini</p>
+        <h3 class="text-2xl font-bold text-gray-800">Rp {{ number_format($totalPendapatanBulanIni, 0, ',', '.') }}</h3>
     </div>
-
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm bg-primary text-white p-3">
-                <small>Pendapatan Bulan Ini</small>
-                <h3 class="fw-bold mb-0">Rp {{ number_format($totalPendapatanBulanIni, 0, ',', '.') }}</h3>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm bg-success text-white p-3">
-                <small>Kendaraan Masuk Hari Ini</small>
-                <h3 class="fw-bold mb-0">{{ $totalKendaraanHariIni }} Kendaraan</h3>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm bg-info text-white p-3">
-                <small>Kapasitas Terpakai (Aktif)</small>
-                <h3 class="fw-bold mb-0">{{ $statsJenis['mobil'] + $statsJenis['motor'] }} Unit</h3>
-            </div>
-        </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+        <p class="text-gray-500 text-xs uppercase font-bold">Kendaraan Hari Ini</p>
+        <h3 class="text-2xl font-bold text-gray-800">{{ $totalKendaraanHariIni }}</h3>
     </div>
-
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white fw-bold py-3">
-            <i class="fas fa-list me-2"></i>SEMUA RIWAYAT TRANSAKSI
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Tiket</th>
-                            <th>Plat Nomor</th>
-                            <th>Jenis</th>
-                            <th>Status</th>
-                            <th>Total Bayar</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($semuaTransaksi as $t)
-                        <tr>
-                            <td><code>{{ $t->kode_tiket }}</code></td>
-                            <td class="text-uppercase fw-bold">{{ $t->plat_nomor ?? '-' }}</td>
-                            <td>{{ strtoupper($t->jenis) }}</td>
-                            <td>
-                                <span class="badge {{ $t->status == 'aktif' ? 'bg-warning' : 'bg-success' }}">
-                                    {{ strtoupper($t->status) }}
-                                </span>
-                            </td>
-                            <td class="fw-bold">Rp {{ number_format($t->total_bayar, 0, ',', '.') }}</td>
-                            <td>
-                                <div class="btn-group">
-                                    <a href="{{ route('parkir.edit', $t->id) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
-                                    <form action="{{ route('parkir.destroy', $t->id) }}" method="POST" onsubmit="return confirm('Hapus data transaksi ini?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="p-3">
-                {{ $semuaTransaksi->links() }}
-            </div>
-        </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-indigo-500">
+        <p class="text-gray-500 text-xs uppercase font-bold">Mobil (Aktif)</p>
+        <h3 class="text-2xl font-bold text-gray-800">{{ $statsJenis['mobil'] }}</h3>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-orange-500">
+        <p class="text-gray-500 text-xs uppercase font-bold">Motor (Aktif)</p>
+        <h3 class="text-2xl font-bold text-gray-800">{{ $statsJenis['motor'] }}</h3>
     </div>
 </div>
+
+<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="p-6 border-b flex flex-col md:flex-row justify-between items-center gap-4">
+        <h2 class="text-lg font-bold text-gray-800">Management Transaksi Parkir</h2>
+        <div class="flex gap-2">
+            <a href="/parkir/export/pdf" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition font-semibold">
+                <i class="fas fa-file-pdf mr-1"></i> Laporan PDF
+            </a>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-bold">
+                <tr>
+                    <th class="px-6 py-4 border-b">No</th>
+                    <th class="px-6 py-4 border-b">Kode Tiket</th>
+                    <th class="px-6 py-4 border-b">Plat Nomor</th>
+                    <th class="px-6 py-4 border-b">Jenis</th>
+                    <th class="px-6 py-4 border-b">Masuk</th>
+                    <th class="px-6 py-4 border-b">Bayar</th>
+                    <th class="px-6 py-4 border-b text-center">Status</th>
+                    <th class="px-6 py-4 border-b text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @foreach($semuaTransaksi as $item)
+                <tr class="hover:bg-blue-50/50 transition">
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        {{ ($semuaTransaksi->currentPage() - 1) * $semuaTransaksi->perPage() + $loop->iteration }}
+                    </td>
+                    <td class="px-6 py-4 font-mono font-bold text-blue-600 text-sm">{{ $item->kode_tiket }}</td>
+                    <td class="px-6 py-4 font-semibold uppercase text-gray-700">{{ $item->plat_nomor ?? '-' }}</td>
+                    <td class="px-6 py-4">
+                        <span class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 border">
+                            {{ strtoupper($item->jenis) }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-xs text-gray-500">
+                        {{ \Carbon\Carbon::parse($item->waktu_masuk)->format('d/m H:i') }}
+                    </td>
+                    <td class="px-6 py-4 font-bold text-gray-700 text-sm">
+                        Rp {{ number_format($item->total_bayar, 0, ',', '.') }}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="px-3 py-1 rounded-full text-[10px] font-black tracking-widest {{ $item->status == 'aktif' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500 border border-gray-200' }}">
+                            {{ strtoupper($item->status) }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex justify-center gap-2">
+                            <form action="{{ route('admin.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Hapus data ini?')">
+                                @csrf @method('DELETE')
+                                <button class="text-red-500 hover:text-red-700 p-2">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    <div class="p-6 bg-gray-50 border-t pagination-custom">
+        {{ $semuaTransaksi->links() }}
+    </div>
+</div>
+
+<style>
+    /* Mengatasi ikon pagination yang membesar */
+    .pagination-custom svg {
+        width: 20px !important;
+        height: 20px !important;
+        display: inline;
+    }
+    .pagination-custom nav > div:first-child {
+        display: none;
+    }
+    @media (min-width: 768px) {
+        .pagination-custom nav > div:first-child { display: flex; }
+    }
+</style>
 @endsection

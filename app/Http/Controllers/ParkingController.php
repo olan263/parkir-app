@@ -11,8 +11,41 @@ use Illuminate\Support\Str;
 class ParkingController extends Controller
 {
     /**
-     * GATE MASUK
+     * 1. DASHBOARD ADMIN (Penyebab Error Tadi)
      */
+    public function indexAdmin()
+    {
+        // Ambil statistik untuk header dashboard
+        $totalPendapatanBulanIni = Parking::where('status', 'selesai')
+            ->whereMonth('waktu_keluar', Carbon::now()->month)
+            ->sum('total_bayar');
+
+        $totalKendaraanHariIni = Parking::whereDate('waktu_masuk', Carbon::today())->count();
+        
+        $statsJenis = [
+            'mobil' => Parking::where('jenis', 'mobil')->where('status', 'aktif')->count(),
+            'motor' => Parking::where('jenis', 'motor')->where('status', 'aktif')->count(),
+        ];
+
+        // Ambil data transaksi dengan pagination (10 data per halaman)
+        $semuaTransaksi = Parking::orderBy('created_at', 'desc')->paginate(10);
+
+        return view('admin.dashboard', compact(
+            'totalPendapatanBulanIni', 
+            'totalKendaraanHariIni', 
+            'statsJenis', 
+            'semuaTransaksi'
+        ));
+    }
+
+    /**
+     * 2. TAMPILAN GATE MASUK
+     */
+    public function indexMasuk() {
+        $kendaraanDiDalam = Parking::where('status', 'aktif')->count();
+        return view('kasir.masuk', compact('kendaraanDiDalam'));
+    }
+
     public function masuk(Request $request) {
         $request->validate(['jenis' => 'required|in:motor,mobil']);
 
@@ -27,7 +60,6 @@ class ParkingController extends Controller
             'status' => 'aktif'
         ]);
 
-        // SUDAH BENAR: Mengirim 'last_id' agar view bisa bikin link cetak PDF
         return redirect()->back()->with([
             'success' => "Tiket $kode berhasil dibuat!",
             'last_id' => $parking->id 
@@ -35,8 +67,14 @@ class ParkingController extends Controller
     }
 
     /**
-     * GATE KELUAR
+     * 3. TAMPILAN GATE KELUAR
      */
+    public function indexKeluar() {
+        $pendapatanHariIni = Parking::whereDate('waktu_keluar', Carbon::today())->sum('total_bayar');
+        $kendaraanAktif = Parking::where('status', 'aktif')->orderBy('waktu_masuk', 'desc')->get();
+        return view('kasir.keluar', compact('pendapatanHariIni', 'kendaraanAktif'));
+    }
+
     public function keluar(Request $request) {
         $request->validate([
             'kode_tiket' => 'required',
@@ -68,10 +106,24 @@ class ParkingController extends Controller
             'durasi' => floor($totalMenit/60).'j '.($totalMenit%60).'m'
         ]);
 
-        // SUDAH BENAR: Mengirim 'print_nota_id' untuk tombol cetak nota
         return redirect()->back()->with([
             'success' => 'Pembayaran Berhasil! Kembalian: Rp ' . number_format($nominalBayar - $totalTagihan),
             'print_nota_id' => $parking->id
         ]);
+    }
+
+    /**
+     * 4. METHOD CETAK PDF
+     */
+    public function cetakTiketMasuk($id) {
+        $data = Parking::findOrFail($id);
+        $pdf = Pdf::loadView('kasir.tiket_masuk', compact('data'))->setPaper([0, 0, 226, 350]);
+        return $pdf->stream('tiket-'.$data->kode_tiket.'.pdf');
+    }
+
+    public function cetakNotaKeluar($id) {
+        $data = Parking::findOrFail($id);
+        $pdf = Pdf::loadView('kasir.nota_keluar', compact('data'))->setPaper([0, 0, 226, 450]);
+        return $pdf->stream('nota-'.$data->kode_tiket.'.pdf');
     }
 }

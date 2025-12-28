@@ -17,7 +17,7 @@
     <div class="row g-4">
         {{-- KOLOM INPUT PEMBAYARAN --}}
         <div class="col-md-4">
-            {{-- NOTIFIKASI & TOMBOL CETAK NOTA --}}
+            {{-- NOTIFIKASI & TOMBOL CETAK --}}
             @if(session('success'))
                 <div class="alert alert-success border-0 shadow-sm mb-4">
                     <div class="text-center">
@@ -25,11 +25,12 @@
                         <h5 class="fw-bold text-success">Berhasil!</h5>
                         <p class="small">{{ session('success') }}</p>
                         <hr>
-                        {{-- INI TOMBOL CETAK NOTANYA --}}
-                        <a href="{{ route('parkir.cetak.keluar', session('print_nota_id')) }}" 
-                           target="_blank" class="btn btn-success w-100 fw-bold shadow-sm py-2">
-                            <i class="fas fa-print me-2"></i> CETAK NOTA SEKARANG
-                        </a>
+                        @if(session('print_nota_id'))
+                            <a href="{{ route('parkir.cetak.keluar', session('print_nota_id')) }}" 
+                               target="_blank" class="btn btn-success w-100 fw-bold shadow-sm py-2">
+                                <i class="fas fa-print me-2"></i> CETAK NOTA SEKARANG
+                            </a>
+                        @endif
                     </div>
                 </div>
             @endif
@@ -49,17 +50,22 @@
                         @csrf
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-muted text-uppercase">Kode Tiket</label>
-                            <input type="text" name="kode_tiket" id="inputKode" class="form-control form-control-lg border-2 border-danger" required>
+                            <input type="text" name="kode_tiket" id="inputKode" 
+                                   class="form-control form-control-lg border-2 border-danger" 
+                                   placeholder="Scan/Ketik Kode" required autofocus>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-muted text-uppercase">Nomor Plat</label>
-                            <input type="text" name="plat_nomor" id="inputPlat" class="form-control form-control-lg text-uppercase" required>
+                            <input type="text" name="plat_nomor" id="inputPlat" 
+                                   class="form-control form-control-lg text-uppercase" 
+                                   placeholder="B 1234 ABC" required>
                         </div>
                         <div class="mb-4">
                             <label class="form-label small fw-bold text-muted text-uppercase">Nominal Bayar</label>
                             <div class="input-group input-group-lg">
                                 <span class="input-group-text bg-danger text-white border-danger">Rp</span>
-                                <input type="number" name="bayar" id="inputBayar" class="form-control fw-bold text-danger border-danger" required>
+                                <input type="number" name="bayar" id="inputBayar" 
+                                       class="form-control fw-bold text-danger border-danger" required>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-danger w-100 btn-lg py-3 shadow fw-bold">
@@ -91,7 +97,9 @@
                         <tbody>
                             @forelse($kendaraanAktif as $item)
                             <tr>
-                                <td class="ps-3 fw-bold text-secondary">{{ $item->waktu_masuk->format('H:i') }}</td>
+                                <td class="ps-3 fw-bold text-secondary">
+                                    {{ $item->waktu_masuk->format('H:i') }}
+                                </td>
                                 <td><span class="badge bg-light text-dark border p-2">{{ $item->kode_tiket }}</span></td>
                                 <td>{{ strtoupper($item->jenis) }}</td>
                                 <td>
@@ -110,7 +118,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="5" class="text-center py-5 text-muted fst-italic">Kosong.</td></tr>
+                            <tr><td colspan="5" class="text-center py-5 text-muted fst-italic">Tidak ada kendaraan di lokasi.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -124,7 +132,7 @@
     function pilihTiket(kode, harga) {
         document.getElementById('inputKode').value = kode;
         document.getElementById('inputBayar').value = harga;
-        document.getElementById('inputPlat').focus();
+        document.getElementById('inputPlat').focus(); // Fokus otomatis ke plat nomor
     }
 </script>
 @endsection

@@ -26,6 +26,8 @@ Route::prefix('admin')->group(function () {
 Route::prefix('parkir/masuk')->group(function () {
     Route::get('/', [ParkingController::class, 'indexMasuk'])->name('parkir.view.masuk');
     Route::post('/proses', [ParkingController::class, 'masuk'])->name('parkir.masuk');
+    
+    // Pastikan ini menggunakan parameter {id}
     Route::get('/cetak/{id}', [ParkingController::class, 'cetakTiketMasuk'])->name('parkir.cetak.masuk');
 });
 
@@ -33,5 +35,7 @@ Route::prefix('parkir/masuk')->group(function () {
 Route::prefix('parkir/keluar')->group(function () {
     Route::get('/', [ParkingController::class, 'indexKeluar'])->name('parkir.view.keluar');
     Route::post('/proses', [ParkingController::class, 'keluar'])->name('parkir.keluar');
+    
+    // Pastikan ini menggunakan parameter {id}
     Route::get('/cetak/{id}', [ParkingController::class, 'cetakNotaKeluar'])->name('parkir.cetak.keluar');
 });

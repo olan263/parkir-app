@@ -11,11 +11,10 @@ use Illuminate\Support\Str;
 class ParkingController extends Controller
 {
     /**
-     * 1. DASHBOARD ADMIN (Penyebab Error Tadi)
+     * 1. DASHBOARD ADMIN
      */
     public function indexAdmin()
     {
-        // Ambil statistik untuk header dashboard
         $totalPendapatanBulanIni = Parking::where('status', 'selesai')
             ->whereMonth('waktu_keluar', Carbon::now()->month)
             ->sum('total_bayar');
@@ -27,7 +26,7 @@ class ParkingController extends Controller
             'motor' => Parking::where('jenis', 'motor')->where('status', 'aktif')->count(),
         ];
 
-        // Ambil data transaksi dengan pagination (10 data per halaman)
+        // Pakai paginate agar tampilan nomor halaman muncul rapi
         $semuaTransaksi = Parking::orderBy('created_at', 'desc')->paginate(10);
 
         return view('admin.dashboard', compact(
@@ -39,7 +38,7 @@ class ParkingController extends Controller
     }
 
     /**
-     * 2. TAMPILAN GATE MASUK
+     * 2. GATE MASUK
      */
     public function indexMasuk() {
         $kendaraanDiDalam = Parking::where('status', 'aktif')->count();
@@ -67,7 +66,7 @@ class ParkingController extends Controller
     }
 
     /**
-     * 3. TAMPILAN GATE KELUAR
+     * 3. GATE KELUAR
      */
     public function indexKeluar() {
         $pendapatanHariIni = Parking::whereDate('waktu_keluar', Carbon::today())->sum('total_bayar');
@@ -84,7 +83,7 @@ class ParkingController extends Controller
 
         $parking = Parking::where('kode_tiket', $request->kode_tiket)->where('status', 'aktif')->first();
 
-        if (!$parking) return back()->with('error', 'Tiket tidak valid atau sudah keluar!');
+        if (!$parking) return back()->with('error', 'Tiket tidak valid!');
 
         $waktuMasuk = Carbon::parse($parking->waktu_masuk);
         $totalMenit = $waktuMasuk->diffInMinutes(now());
@@ -95,7 +94,7 @@ class ParkingController extends Controller
         $nominalBayar = (int) preg_replace('/[^0-9]/', '', $request->bayar);
         
         if ($nominalBayar < $totalTagihan) {
-            return back()->with('error', 'Uang kurang! Total Tagihan: Rp ' . number_format($totalTagihan));
+            return back()->with('error', 'Uang kurang! Total: Rp ' . number_format($totalTagihan));
         }
 
         $parking->update([
@@ -107,13 +106,13 @@ class ParkingController extends Controller
         ]);
 
         return redirect()->back()->with([
-            'success' => 'Pembayaran Berhasil! Kembalian: Rp ' . number_format($nominalBayar - $totalTagihan),
+            'success' => 'Pembayaran Berhasil!',
             'print_nota_id' => $parking->id
         ]);
     }
 
     /**
-     * 4. METHOD CETAK PDF
+     * 4. PRINTING & EXPORT
      */
     public function cetakTiketMasuk($id) {
         $data = Parking::findOrFail($id);
@@ -126,4 +125,34 @@ class ParkingController extends Controller
         $pdf = Pdf::loadView('kasir.nota_keluar', compact('data'))->setPaper([0, 0, 226, 450]);
         return $pdf->stream('nota-'.$data->kode_tiket.'.pdf');
     }
-}
+
+    public function exportPDF() {
+        $semuaTransaksi = Parking::all();
+        // Pastikan view 'admin.laporan_pdf' sudah kamu buat filenya
+        $pdf = Pdf::loadView('admin.laporan_pdf', compact('semuaTransaksi'))->setPaper('a4', 'landscape');
+        return $pdf->stream('laporan-parkir.pdf');
+    }
+
+    public function exportExcel() {
+        return back()->with('error', 'Fitur Excel sedang dikembangkan!');
+    }
+
+    /**
+     * 5. CRUD MANAGEMENT
+     */
+    public function destroy($id) {
+        Parking::findOrFail($id)->delete();
+        return back()->with('success', 'Data parkir berhasil dihapus!');
+    }
+
+    public function edit($id) {
+        $parking = Parking::findOrFail($id);
+        return view('admin.edit', compact('parking'));
+    }
+
+    public function update(Request $request, $id) {
+        $parking = Parking::findOrFail($id);
+        $parking->update($request->all());
+        return redirect()->route('admin.dashboard')->with('success', 'Data diperbarui!');
+    }
+} // AKHIR DARI CLASS - Pastikan kurung ini yang paling bawah!

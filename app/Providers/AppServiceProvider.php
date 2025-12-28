@@ -5,7 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Pagination\Paginator; // 1. TAMBAHKAN INI
+use Illuminate\Pagination\Paginator;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,6 +14,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Pengaturan khusus untuk storage Vercel di lingkungan production
         if (config('app.env') === 'production') {
             $this->app->useStoragePath('/tmp');
         }
@@ -24,15 +25,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Menetapkan default string length untuk menghindari error index mysql
+        // 1. Menetapkan default string length untuk menghindari error index MySQL
         Schema::defaultStringLength(191);
 
-        // Tambahkan blok ini untuk memaksa HTTPS di Vercel
+        // 2. Memaksa HTTPS di lingkungan non-lokal (Vercel/Hosting)
         if (config('app.env') !== 'local') {
             URL::forceScheme('https');
         }
 
-        // 2. TAMBAHKAN INI UNTUK MEMPERBAIKI PAGINATION
-        Paginator::useBootstrapFive(); 
+        // 3. Mengatur Laravel agar menggunakan desain Bootstrap 5 untuk pagination
+        Paginator::useBootstrapFive();
     }
 }

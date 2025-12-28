@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="container py-4">
-    {{-- HEADER & STATS --}}
+    {{-- HEADER --}}
     <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded shadow-sm border-start border-danger border-4">
         <div>
             <h2 class="fw-bold text-danger mb-0"><i class="fas fa-cash-register"></i> KASIR KELUAR</h2>
@@ -17,16 +17,17 @@
     <div class="row g-4">
         {{-- KOLOM INPUT PEMBAYARAN --}}
         <div class="col-md-4">
-            {{-- ALERT NOTIFIKASI & TOMBOL CETAK NOTA --}}
+            {{-- NOTIFIKASI & TOMBOL CETAK NOTA --}}
             @if(session('success'))
-                <div class="alert alert-success border-0 shadow-sm mb-4 animate__animated animate__bounceIn">
+                <div class="alert alert-success border-0 shadow-sm mb-4">
                     <div class="text-center">
-                        <i class="fas fa-check-circle fa-3x mb-2"></i>
-                        <h5 class="fw-bold">Berhasil!</h5>
+                        <i class="fas fa-check-circle fa-3x mb-2 text-success"></i>
+                        <h5 class="fw-bold text-success">Berhasil!</h5>
                         <p class="small">{{ session('success') }}</p>
                         <hr>
+                        {{-- INI TOMBOL CETAK NOTANYA --}}
                         <a href="{{ route('parkir.cetak.keluar', session('print_nota_id')) }}" 
-                           target="_blank" class="btn btn-success w-100 fw-bold shadow-sm">
+                           target="_blank" class="btn btn-success w-100 fw-bold shadow-sm py-2">
                             <i class="fas fa-print me-2"></i> CETAK NOTA SEKARANG
                         </a>
                     </div>
@@ -34,7 +35,7 @@
             @endif
 
             @if(session('error'))
-                <div class="alert alert-danger shadow-sm border-0 mb-4 animate__animated animate__headShake">
+                <div class="alert alert-danger shadow-sm border-0 mb-4">
                     <i class="fas fa-exclamation-triangle me-2"></i> {{ session('error') }}
                 </div>
             @endif
@@ -48,41 +49,32 @@
                         @csrf
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-muted text-uppercase">Kode Tiket</label>
-                            <input type="text" name="kode_tiket" id="inputKode" 
-                                   class="form-control form-control-lg border-2 border-danger" 
-                                   placeholder="Contoh: TKT-XXXX" required>
+                            <input type="text" name="kode_tiket" id="inputKode" class="form-control form-control-lg border-2 border-danger" required>
                         </div>
-                        
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-muted text-uppercase">Nomor Plat</label>
-                            <input type="text" name="plat_nomor" id="inputPlat" 
-                                   class="form-control form-control-lg text-uppercase" 
-                                   placeholder="B 1234 ABC" required>
+                            <input type="text" name="plat_nomor" id="inputPlat" class="form-control form-control-lg text-uppercase" required>
                         </div>
-
                         <div class="mb-4">
                             <label class="form-label small fw-bold text-muted text-uppercase">Nominal Bayar</label>
                             <div class="input-group input-group-lg">
                                 <span class="input-group-text bg-danger text-white border-danger">Rp</span>
-                                <input type="number" name="bayar" id="inputBayar" 
-                                       class="form-control fw-bold text-danger border-danger" required>
+                                <input type="number" name="bayar" id="inputBayar" class="form-control fw-bold text-danger border-danger" required>
                             </div>
-                            <small class="text-muted fst-italic mt-1 d-block" style="font-size: 0.75rem;">* Masukkan nominal tanpa titik/koma</small>
                         </div>
-
                         <button type="submit" class="btn btn-danger w-100 btn-lg py-3 shadow fw-bold">
-                            PROSES PEMBAYARAN <i class="fas fa-arrow-circle-right ms-2"></i>
+                            BAYAR & KELUAR <i class="fas fa-arrow-circle-right ms-2"></i>
                         </button>
                     </form>
                 </div>
             </div>
         </div>
 
-        {{-- KOLOM DAFTAR KENDARAAN AKTIF --}}
+        {{-- DAFTAR KENDARAAN AKTIF --}}
         <div class="col-md-8">
             <div class="card shadow-sm border-0 rounded-3">
                 <div class="card-header bg-info text-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold small text-uppercase"><i class="fas fa-car me-2"></i> Kendaraan Masih Di Dalam</h5>
+                    <h5 class="mb-0 fw-bold small text-uppercase">Kendaraan Masih Di Dalam</h5>
                     <span class="badge bg-white text-info">{{ $kendaraanAktif->count() }} Unit</span>
                 </div>
                 <div class="table-responsive">
@@ -100,14 +92,8 @@
                             @forelse($kendaraanAktif as $item)
                             <tr>
                                 <td class="ps-3 fw-bold text-secondary">{{ $item->waktu_masuk->format('H:i') }}</td>
-                                <td><span class="badge bg-light text-dark border font-mono p-2">{{ $item->kode_tiket }}</span></td>
-                                <td>
-                                    @if($item->jenis == 'mobil')
-                                        <i class="fas fa-car text-primary me-1"></i> MOBIL
-                                    @else
-                                        <i class="fas fa-motorcycle text-warning me-1"></i> MOTOR
-                                    @endif
-                                </td>
+                                <td><span class="badge bg-light text-dark border p-2">{{ $item->kode_tiket }}</span></td>
+                                <td>{{ strtoupper($item->jenis) }}</td>
                                 <td>
                                     @php
                                         $totalJam = ceil($item->waktu_masuk->diffInMinutes(now()) / 60);
@@ -124,12 +110,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr>
-                                <td colspan="5" class="text-center py-5 text-muted fst-italic">
-                                    <i class="fas fa-parking fa-3x mb-3 d-block opacity-25"></i>
-                                    Tidak ada kendaraan di dalam area parkir.
-                                </td>
-                            </tr>
+                            <tr><td colspan="5" class="text-center py-5 text-muted fst-italic">Kosong.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -140,26 +121,10 @@
 </div>
 
 <script>
-    // Autofocus ke input kode saat halaman dibuka
-    document.addEventListener("DOMContentLoaded", function() {
-        document.getElementById('inputKode').focus();
-    });
-
-    // Fungsi otomatis mengisi form saat baris tabel diklik
     function pilihTiket(kode, harga) {
         document.getElementById('inputKode').value = kode;
         document.getElementById('inputBayar').value = harga;
         document.getElementById('inputPlat').focus();
-        
-        // Animasi feedback sedikit biar kasir tau data pindah
-        let card = document.querySelector('.sticky-top');
-        card.classList.add('animate__animated', 'animate__pulse');
-        setTimeout(() => card.classList.remove('animate__animated', 'animate__pulse'), 500);
     }
 </script>
-
-<style>
-    .font-mono { font-family: 'Courier New', Courier, monospace; }
-    .animate__animated { --animate-duration: 0.5s; }
-</style>
 @endsection

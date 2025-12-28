@@ -1,67 +1,136 @@
 @extends('layouts.app')
+
 @section('content')
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold text-danger"><i class="fas fa-cash-register"></i> KASIR KELUAR</h2>
+    {{-- HEADER & STATS --}}
+    <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded shadow-sm border-start border-danger border-4">
+        <div>
+            <h2 class="fw-bold text-danger mb-0"><i class="fas fa-cash-register"></i> KASIR KELUAR</h2>
+            <p class="text-muted mb-0 small">Input kode tiket untuk proses pembayaran</p>
+        </div>
         <div class="text-end">
-            <small class="text-muted d-block">Pendapatan Hari Ini</small>
-            <h4 class="text-success fw-bold">Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}</h4>
+            <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.7rem;">Pendapatan Hari Ini</small>
+            <h4 class="text-success fw-bold mb-0">Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}</h4>
         </div>
     </div>
 
     <div class="row g-4">
+        {{-- KOLOM INPUT PEMBAYARAN --}}
         <div class="col-md-4">
-            <div class="card shadow-sm border-top border-danger border-4 sticky-top" style="top: 20px;">
-                <div class="card-header bg-white"><h5 class="mb-0">Proses Keluar</h5></div>
-                <div class="card-body">
+            {{-- ALERT NOTIFIKASI & TOMBOL CETAK NOTA --}}
+            @if(session('success'))
+                <div class="alert alert-success border-0 shadow-sm mb-4 animate__animated animate__bounceIn">
+                    <div class="text-center">
+                        <i class="fas fa-check-circle fa-3x mb-2"></i>
+                        <h5 class="fw-bold">Berhasil!</h5>
+                        <p class="small">{{ session('success') }}</p>
+                        <hr>
+                        <a href="{{ route('parkir.cetak.keluar', session('print_nota_id')) }}" 
+                           target="_blank" class="btn btn-success w-100 fw-bold shadow-sm">
+                            <i class="fas fa-print me-2"></i> CETAK NOTA SEKARANG
+                        </a>
+                    </div>
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="alert alert-danger shadow-sm border-0 mb-4 animate__animated animate__headShake">
+                    <i class="fas fa-exclamation-triangle me-2"></i> {{ session('error') }}
+                </div>
+            @endif
+
+            <div class="card shadow-sm border-0 rounded-3 sticky-top" style="top: 20px;">
+                <div class="card-header bg-danger text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-file-invoice-dollar me-2"></i> Form Pembayaran</h5>
+                </div>
+                <div class="card-body p-4">
                     <form action="{{ route('parkir.keluar') }}" method="POST">
                         @csrf
-                        <input type="text" name="kode_tiket" id="inputKode" placeholder="Kode Tiket" class="form-control mb-2" required>
-                        <input type="text" name="plat_nomor" id="inputPlat" placeholder="Nomor Plat" class="form-control mb-2 text-uppercase" required>
-                        <div class="input-group mb-3">
-                            <span class="input-group-text">Rp</span>
-                            <input type="number" name="bayar" id="inputBayar" class="form-control fw-bold text-danger" required>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Kode Tiket</label>
+                            <input type="text" name="kode_tiket" id="inputKode" 
+                                   class="form-control form-control-lg border-2 border-danger" 
+                                   placeholder="Contoh: TKT-XXXX" required>
                         </div>
-                        <button type="submit" class="btn btn-danger w-100 btn-lg">PROSES BAYAR</button>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Nomor Plat</label>
+                            <input type="text" name="plat_nomor" id="inputPlat" 
+                                   class="form-control form-control-lg text-uppercase" 
+                                   placeholder="B 1234 ABC" required>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Nominal Bayar</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-danger text-white border-danger">Rp</span>
+                                <input type="number" name="bayar" id="inputBayar" 
+                                       class="form-control fw-bold text-danger border-danger" required>
+                            </div>
+                            <small class="text-muted fst-italic mt-1 d-block" style="font-size: 0.75rem;">* Masukkan nominal tanpa titik/koma</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-danger w-100 btn-lg py-3 shadow fw-bold">
+                            PROSES PEMBAYARAN <i class="fas fa-arrow-circle-right ms-2"></i>
+                        </button>
                     </form>
                 </div>
             </div>
         </div>
 
+        {{-- KOLOM DAFTAR KENDARAAN AKTIF --}}
         <div class="col-md-8">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-info text-white small fw-bold">KENDARAAN DI DALAM</div>
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-header bg-info text-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold small text-uppercase"><i class="fas fa-car me-2"></i> Kendaraan Masih Di Dalam</h5>
+                    <span class="badge bg-white text-info">{{ $kendaraanAktif->count() }} Unit</span>
+                </div>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0 admin-table">
+                    <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
-                            <tr>
-                                <th>Masuk</th>
-                                <th>Tiket</th>
+                            <tr class="small text-muted text-uppercase">
+                                <th class="ps-3">Waktu Masuk</th>
+                                <th>Kode Tiket</th>
                                 <th>Jenis</th>
-                                <th>Estimasi</th>
-                                <th>Aksi</th>
+                                <th>Estimasi Biaya</th>
+                                <th class="text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($kendaraanAktif as $item)
+                            @forelse($kendaraanAktif as $item)
                             <tr>
-                                <td>{{ $item->waktu_masuk->format('H:i') }}</td>
-                                <td><code>{{ $item->kode_tiket }}</code></td>
-                                <td>{{ strtoupper($item->jenis) }}</td>
+                                <td class="ps-3 fw-bold text-secondary">{{ $item->waktu_masuk->format('H:i') }}</td>
+                                <td><span class="badge bg-light text-dark border font-mono p-2">{{ $item->kode_tiket }}</span></td>
+                                <td>
+                                    @if($item->jenis == 'mobil')
+                                        <i class="fas fa-car text-primary me-1"></i> MOBIL
+                                    @else
+                                        <i class="fas fa-motorcycle text-warning me-1"></i> MOTOR
+                                    @endif
+                                </td>
                                 <td>
                                     @php
                                         $totalJam = ceil($item->waktu_masuk->diffInMinutes(now()) / 60);
                                         $tarif = ($item->jenis == 'mobil') ? 5000 : 2000;
+                                        $biaya = ($totalJam <= 0 ? 1 : $totalJam) * $tarif;
                                     @endphp
-                                    <strong>Rp {{ number_format($totalJam * $tarif, 0, ',', '.') }}</strong>
+                                    <span class="fw-bold text-danger">Rp {{ number_format($biaya, 0, ',', '.') }}</span>
                                 </td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="pilihTiket('{{ $item->kode_tiket }}', {{ $totalJam * $tarif }})">
-                                        Pilih
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger px-3 rounded-pill" 
+                                            onclick="pilihTiket('{{ $item->kode_tiket }}', {{ $biaya }})">
+                                        Pilih <i class="fas fa-chevron-right ms-1"></i>
                                     </button>
                                 </td>
                             </tr>
-                            @endforeach
+                            @empty
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted fst-italic">
+                                    <i class="fas fa-parking fa-3x mb-3 d-block opacity-25"></i>
+                                    Tidak ada kendaraan di dalam area parkir.
+                                </td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -71,10 +140,26 @@
 </div>
 
 <script>
-function pilihTiket(kode, harga) {
-    document.getElementById('inputKode').value = kode;
-    document.getElementById('inputBayar').value = harga;
-    document.getElementById('inputPlat').focus();
-}
+    // Autofocus ke input kode saat halaman dibuka
+    document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById('inputKode').focus();
+    });
+
+    // Fungsi otomatis mengisi form saat baris tabel diklik
+    function pilihTiket(kode, harga) {
+        document.getElementById('inputKode').value = kode;
+        document.getElementById('inputBayar').value = harga;
+        document.getElementById('inputPlat').focus();
+        
+        // Animasi feedback sedikit biar kasir tau data pindah
+        let card = document.querySelector('.sticky-top');
+        card.classList.add('animate__animated', 'animate__pulse');
+        setTimeout(() => card.classList.remove('animate__animated', 'animate__pulse'), 500);
+    }
 </script>
+
+<style>
+    .font-mono { font-family: 'Courier New', Courier, monospace; }
+    .animate__animated { --animate-duration: 0.5s; }
+</style>
 @endsection

@@ -3,11 +3,13 @@
 use App\Http\Controllers\ParkingController;
 use Illuminate\Support\Facades\Route;
 
-// 1. HALAMAN UTAMA (ARAHKAN KE DASHBOARD ADMIN)
+// 1. HALAMAN UTAMA
 Route::get('/', [ParkingController::class, 'indexAdmin'])->name('parkir.index');
 
 // 2. MODUL ADMIN (DASHBOARD & MANAGEMENT)
 Route::get('/admin/dashboard', [ParkingController::class, 'indexAdmin'])->name('admin.dashboard');
+// Tambahkan route ini agar menu Sidebar "Data Parkir" tidak Not Found
+Route::get('/admin/parkir', [ParkingController::class, 'indexAdmin'])->name('admin.parkir'); 
 
 // 3. MODUL MASUK (GATE IN)
 Route::get('/parkir/masuk', [ParkingController::class, 'indexMasuk'])->name('parkir.view.masuk');
@@ -23,8 +25,7 @@ Route::get('/parkir/cetak-keluar/{id}', [ParkingController::class, 'cetakNotaKel
 Route::get('/parkir/export/pdf', [ParkingController::class, 'exportPDF'])->name('parkir.export.pdf');
 Route::get('/parkir/export/excel', [ParkingController::class, 'exportExcel'])->name('parkir.export.excel');
 
-// 6. MANAGEMENT DATA (CRUD) - DISESUAIKAN KE NAMA 'admin.*'
-// Ini agar sinkron dengan tombol hapus di dashboard admin
+// 6. MANAGEMENT DATA (CRUD)
 Route::get('/admin/parkir/{id}/edit', [ParkingController::class, 'edit'])->name('admin.edit');
 Route::put('/admin/parkir/{id}', [ParkingController::class, 'update'])->name('admin.update');
 Route::delete('/admin/parkir/{id}', [ParkingController::class, 'destroy'])->name('admin.destroy');

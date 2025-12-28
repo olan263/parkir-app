@@ -23,7 +23,8 @@ Route::get('/parkir/cetak-keluar/{id}', [ParkingController::class, 'cetakNotaKel
 Route::get('/parkir/export/pdf', [ParkingController::class, 'exportPDF'])->name('parkir.export.pdf');
 Route::get('/parkir/export/excel', [ParkingController::class, 'exportExcel'])->name('parkir.export.excel');
 
-// 6. MANAGEMENT DATA (CRUD)
-Route::get('/parkir/{id}/edit', [ParkingController::class, 'edit'])->name('parkir.edit');
-Route::put('/parkir/{id}', [ParkingController::class, 'update'])->name('parkir.update');
-Route::delete('/parkir/{id}', [ParkingController::class, 'destroy'])->name('parkir.destroy');
+// 6. MANAGEMENT DATA (CRUD) - DISESUAIKAN KE NAMA 'admin.*'
+// Ini agar sinkron dengan tombol hapus di dashboard admin
+Route::get('/admin/parkir/{id}/edit', [ParkingController::class, 'edit'])->name('admin.edit');
+Route::put('/admin/parkir/{id}', [ParkingController::class, 'update'])->name('admin.update');
+Route::delete('/admin/parkir/{id}', [ParkingController::class, 'destroy'])->name('admin.destroy');

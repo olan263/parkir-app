@@ -10,6 +10,37 @@ use Illuminate\Support\Str;
 
 class ParkingController extends Controller
 {
+    /**
+     * DASHBOARD ADMIN
+     * Menampilkan statistik dan semua data parkir
+     */
+    public function indexAdmin()
+    {
+        $totalPendapatanBulanIni = Parking::where('status', 'selesai')
+            ->whereMonth('waktu_keluar', Carbon::now()->month)
+            ->sum('total_bayar');
+
+        $totalKendaraanHariIni = Parking::whereDate('waktu_masuk', Carbon::today())->count();
+        
+        $statsJenis = [
+            'mobil' => Parking::where('jenis', 'mobil')->where('status', 'aktif')->count(),
+            'motor' => Parking::where('jenis', 'motor')->where('status', 'aktif')->count(),
+        ];
+
+        // Ambil semua data untuk tabel dashboard
+        $semuaTransaksi = Parking::orderBy('created_at', 'desc')->paginate(10);
+
+        return view('admin.dashboard', compact(
+            'totalPendapatanBulanIni', 
+            'totalKendaraanHariIni', 
+            'statsJenis', 
+            'semuaTransaksi'
+        ));
+    }
+
+    /**
+     * GATE MASUK
+     */
     public function indexMasuk() {
         $kendaraanDiDalam = Parking::where('status', 'aktif')->count();
         return view('kasir.masuk', compact('kendaraanDiDalam'));
@@ -31,10 +62,13 @@ class ParkingController extends Controller
 
         return redirect()->back()->with([
             'success' => "Tiket $kode berhasil dibuat!",
-            'last_id' => $parking->id // ID ini dipakai buat tombol cetak
+            'last_id' => $parking->id
         ]);
     }
 
+    /**
+     * GATE KELUAR
+     */
     public function indexKeluar() {
         $pendapatanHariIni = Parking::whereDate('waktu_keluar', Carbon::today())->sum('total_bayar');
         $kendaraanAktif = Parking::where('status', 'aktif')->orderBy('waktu_masuk', 'desc')->get();
@@ -74,10 +108,13 @@ class ParkingController extends Controller
 
         return redirect()->back()->with([
             'success' => 'Pembayaran Berhasil!',
-            'print_nota_id' => $parking->id // ID ini dipakai buat tombol cetak nota
+            'print_nota_id' => $parking->id
         ]);
     }
 
+    /**
+     * CETAK PDF
+     */
     public function cetakTiketMasuk($id) {
         $data = Parking::findOrFail($id);
         $pdf = Pdf::loadView('kasir.tiket_masuk', compact('data'))->setPaper([0, 0, 226, 350]);
@@ -89,6 +126,24 @@ class ParkingController extends Controller
         $pdf = Pdf::loadView('kasir.nota_keluar', compact('data'))->setPaper([0, 0, 226, 450]);
         return $pdf->stream('nota-'.$data->kode_tiket.'.pdf');
     }
-    
-    // ... indexAdmin, edit, update, destroy tetap sama seperti sebelumnya ...
+
+    /**
+     * MANAGEMENT DATA (CRUD)
+     */
+    public function destroy($id) {
+        $parking = Parking::findOrFail($id);
+        $parking->delete();
+        return redirect()->back()->with('success', 'Data parkir berhasil dihapus!');
+    }
+
+    public function edit($id) {
+        $parking = Parking::findOrFail($id);
+        return view('admin.edit', compact('parking'));
+    }
+
+    public function update(Request $request, $id) {
+        $parking = Parking::findOrFail($id);
+        $parking->update($request->all());
+        return redirect()->route('admin.dashboard')->with('success', 'Data berhasil diperbarui!');
+    }
 }

@@ -24,6 +24,8 @@
             background-color: #fffdf5;
             border-radius: 8px;
         }
+        /* Efek loading sederhana saat tombol diklik */
+        .btn-loading { pointer-events: none; opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -84,7 +86,7 @@
                     <h5 class="card-title mb-0 text-primary fw-bold"><i class="fas fa-sign-in-alt"></i> Masuk (Ambil Tiket)</h5>
                 </div>
                 <div class="card-body p-4">
-                    <form action="{{ route('parkir.masuk') }}" method="POST">
+                    <form action="{{ route('parkir.masuk') }}" method="POST" onsubmit="showLoading(this)">
                         @csrf
                         <div class="mb-3">
                             <label class="form-label fw-bold">Pilih Jenis Kendaraan</label>
@@ -93,16 +95,16 @@
                                 <option value="mobil">🚗 Mobil (Rp 5.000/jam)</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-lg w-100 shadow">
+                        <button type="submit" class="btn btn-primary btn-lg w-100 shadow btn-submit">
                             <i class="fas fa-print"></i> PROSES MASUK
                         </button>
                     </form>
 
                     @if(session('last_id'))
                         <div class="alert alert-light mt-3 border text-center shadow-sm">
-                            <p class="mb-2 small fw-bold text-muted">TIKET TERBARU:</p>
+                            <p class="mb-2 small fw-bold text-muted">TIKET BERHASIL DIBUAT!</p>
                             <a href="{{ route('parkir.cetak.masuk', session('last_id')) }}" target="_blank" class="btn btn-dark btn-sm shadow-sm">
-                                <i class="fas fa-print"></i> CETAK TIKET FISIK
+                                <i class="fas fa-print"></i> CETAK TIKET SEKARANG
                             </a>
                         </div>
                     @endif
@@ -116,7 +118,7 @@
                     <h5 class="card-title mb-0 text-danger fw-bold"><i class="fas fa-cash-register"></i> Keluar (Pembayaran)</h5>
                 </div>
                 <div class="card-body p-4">
-                    <form action="{{ route('parkir.keluar') }}" method="POST">
+                    <form action="{{ route('parkir.keluar') }}" method="POST" onsubmit="showLoading(this)">
                         @csrf
                         <div class="mb-2">
                             <input type="text" name="kode_tiket" id="inputKode" placeholder="Kode Tiket (TKT-XXXX)" class="form-control form-control-lg shadow-sm" required>
@@ -138,7 +140,7 @@
                                 <button type="button" class="btn btn-quick-cash btn-outline-secondary" onclick="setBayar(50000)">50rb</button>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-danger btn-lg w-100 shadow">
+                        <button type="submit" class="btn btn-danger btn-lg w-100 shadow btn-submit">
                             <i class="fas fa-calculator"></i> PROSES BAYAR
                         </button>
                     </form>
@@ -209,8 +211,9 @@
                                     </td>
                                     <td class="pe-4 text-end">
                                         <div class="btn-group shadow-sm">
-                                            <a href="{{ route('parkir.edit', $item->id) }}" class="btn btn-sm btn-warning text-white"><i class="fas fa-edit"></i></a>
-                                            <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}')">
+                                            <a href="{{ route('parkir.edit', $item->id) }}" class="btn btn-sm btn-warning text-white" title="Edit Data"><i class="fas fa-edit"></i></a>
+                                            <a href="{{ route('parkir.cetak.masuk', $item->id) }}" target="_blank" class="btn btn-sm btn-info text-white" title="Cetak Tiket"><i class="fas fa-print"></i></a>
+                                            <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}')" title="Proses Keluar">
                                                 Keluar <i class="fas fa-arrow-up"></i>
                                             </button>
                                         </div>
@@ -278,7 +281,7 @@
                                                 @csrf @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
                                             </form>
-                                            <a href="{{ route('parkir.cetak.keluar', $data->id) }}" target="_blank" class="btn btn-sm btn-dark"><i class="fas fa-receipt"></i></a>
+                                            <a href="{{ route('parkir.cetak.keluar', $data->id) }}" target="_blank" class="btn btn-sm btn-dark" title="Cetak Nota"><i class="fas fa-receipt"></i></a>
                                         </div>
                                     </td>
                                 </tr>
@@ -295,14 +298,23 @@
 </div>
 
 <script>
+    // Fungsi untuk mempercepat input nominal
     function setBayar(amount) {
         document.getElementById('inputBayar').value = amount;
     }
 
+    // Fungsi otomatis mengisi kode tiket saat klik tombol "Keluar" di tabel
     function pilihTiket(kode) {
         document.getElementById('inputKode').value = kode;
         document.getElementById('inputPlat').focus();
         document.getElementById('pembayaran-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Fungsi untuk menampilkan loading pada tombol agar user tahu proses sedang berjalan
+    function showLoading(form) {
+        const btn = form.querySelector('.btn-submit');
+        btn.classList.add('btn-loading');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
     }
 
     // Menghilangkan alert otomatis setelah 4 detik

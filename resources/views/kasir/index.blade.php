@@ -218,7 +218,7 @@
                                             <a href="{{ route('parkir.edit', $item->id) }}" class="btn btn-sm btn-warning text-white"><i class="fas fa-edit"></i></a>
                                             <a href="{{ route('parkir.cetak.masuk', $item->id) }}" target="_blank" class="btn btn-sm btn-info text-white"><i class="fas fa-print"></i></a>
                                             <button class="btn btn-sm btn-danger" 
-                                                    onclick="pilihTiket('{{ $item->kode_tiket }}', '{{ $item->jenis }}', '{{ $item->waktu_masuk }}')">
+                                                    onclick="pilihTiket('{{ $item->kode_tiket }}', '{{ $item->jenis }}', '{{ $item->waktu_masuk->toIso8601String() }}')">
                                                 Keluar <i class="fas fa-arrow-up"></i>
                                             </button>
                                         </div>
@@ -304,17 +304,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Fungsi Hitung Estimasi Tagihan Otomatis
     function pilihTiket(kode, jenis, waktuMasuk) {
         document.getElementById('inputKode').value = kode;
         
-        // Logika hitung durasi & tarif
         let tglMasuk = new Date(waktuMasuk);
         let tglSekarang = new Date();
-        let selisihMs = tglSekarang - tglMasuk;
         
-        // Konversi ke jam (minimal 1 jam)
-        let selisihJam = Math.ceil(selisihMs / (1000 * 60 * 60)); 
+        // Hitung selisih dalam milidetik dan konversi ke menit
+        let selisihMs = tglSekarang - tglMasuk;
+        let totalMenit = Math.floor(selisihMs / (1000 * 60));
+        
+        // Aturan: 1 menit pun dihitung 1 jam, menit ke-61 jadi 2 jam (ceil)
+        let selisihJam = Math.ceil(totalMenit / 60); 
         if (selisihJam <= 0) selisihJam = 1;
 
         let tarifPerJam = (jenis === 'mobil') ? 5000 : 2000;
@@ -324,10 +325,13 @@
         document.getElementById('displayTagihan').innerText = "Rp " + totalTagihan.toLocaleString('id-ID');
         document.getElementById('inputBayar').value = totalTagihan; 
         
-        // Tampilkan info detail
+        // Tampilkan info detail yang jujur
         let detail = document.getElementById('infoDetailTarif');
         detail.style.display = 'block';
-        detail.innerHTML = `<i class="fas fa-clock"></i> Durasi: ${selisihJam} Jam (${jenis.toUpperCase()} x Rp ${tarifPerJam.toLocaleString('id-ID')})`;
+        
+        let jamTampil = Math.floor(totalMenit / 60);
+        let menitTampil = totalMenit % 60;
+        detail.innerHTML = `<i class="fas fa-clock"></i> Waktu Nyata: ${jamTampil}j ${menitTampil}m (Dibulatkan: ${selisihJam} Jam)`;
 
         // Scroll ke form & Fokus ke Plat Nomor
         document.getElementById('inputPlat').focus();

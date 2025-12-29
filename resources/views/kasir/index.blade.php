@@ -13,19 +13,9 @@
         .stat-card { border-left: 5px solid; }
         .table thead { background-color: #212529; color: white; }
         .btn-quick-cash { font-size: 0.8rem; padding: 2px 8px; }
-        .badge-active { animation: pulse 2s infinite; }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        .nota-container {
-            border: 2px dashed #ffc107;
-            background-color: #fffdf5;
-            border-radius: 8px;
-        }
-        /* Efek loading sederhana saat tombol diklik */
+        .nota-container { border: 2px dashed #ffc107; background-color: #fffdf5; border-radius: 8px; }
         .btn-loading { pointer-events: none; opacity: 0.7; }
+        .badge-price { font-size: 0.85rem; }
     </style>
 </head>
 <body>
@@ -55,7 +45,7 @@
             <div class="card stat-card border-success shadow-sm bg-white">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted text-uppercase mb-1">Pendapatan Hari Ini</h6>
+                        <h6 class="text-muted text-uppercase mb-1 small fw-bold">Pendapatan Hari Ini</h6>
                         <h2 class="fw-bold mb-0 text-success">Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}</h2>
                     </div>
                     <div class="bg-success bg-opacity-10 p-3 rounded-circle">
@@ -68,7 +58,7 @@
             <div class="card stat-card border-info shadow-sm bg-white">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted text-uppercase mb-1">Kendaraan di Dalam</h6>
+                        <h6 class="text-muted text-uppercase mb-1 small fw-bold">Kendaraan di Dalam</h6>
                         <h2 class="fw-bold mb-0 text-info">{{ $kendaraanDiDalam }} <small class="text-muted fs-6">Unit</small></h2>
                     </div>
                     <div class="bg-info bg-opacity-10 p-3 rounded-circle">
@@ -86,13 +76,18 @@
                     <h5 class="card-title mb-0 text-primary fw-bold"><i class="fas fa-sign-in-alt"></i> Masuk (Ambil Tiket)</h5>
                 </div>
                 <div class="card-body p-4">
+                    <div class="d-flex gap-2 mb-3 justify-content-center">
+                        <span class="badge bg-light text-primary border border-primary px-3 py-2 badge-price">🏍️ Rp 2.000/jam</span>
+                        <span class="badge bg-light text-primary border border-primary px-3 py-2 badge-price">🚗 Rp 5.000/jam</span>
+                    </div>
+
                     <form action="{{ route('parkir.masuk') }}" method="POST" onsubmit="showLoading(this)">
                         @csrf
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Pilih Jenis Kendaraan</label>
+                            <label class="form-label fw-bold small">Pilih Jenis Kendaraan</label>
                             <select name="jenis" class="form-select form-select-lg shadow-sm border-primary">
-                                <option value="motor">🏍️ Motor (Rp 2.000/jam)</option>
-                                <option value="mobil">🚗 Mobil (Rp 5.000/jam)</option>
+                                <option value="motor">🏍️ Motor</option>
+                                <option value="mobil">🚗 Mobil</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary btn-lg w-100 shadow btn-submit">
@@ -126,6 +121,15 @@
                         <div class="mb-2">
                             <input type="text" name="plat_nomor" id="inputPlat" placeholder="Nomor Plat (B 1234 ABC)" class="form-control form-control-lg shadow-sm text-uppercase" required>
                         </div>
+
+                        <div class="alert alert-secondary py-2 px-3 mb-3 border-0 shadow-sm" style="background-color: #f8f9fa;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small fw-bold text-muted">ESTIMASI TAGIHAN:</span>
+                                <h4 class="fw-bold text-danger mb-0" id="displayTagihan">Rp 0</h4>
+                            </div>
+                            <div id="infoDetailTarif" class="small text-muted mt-1" style="display:none;"></div>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Nominal Bayar</label>
                             <div class="input-group">
@@ -211,9 +215,10 @@
                                     </td>
                                     <td class="pe-4 text-end">
                                         <div class="btn-group shadow-sm">
-                                            <a href="{{ route('parkir.edit', $item->id) }}" class="btn btn-sm btn-warning text-white" title="Edit Data"><i class="fas fa-edit"></i></a>
-                                            <a href="{{ route('parkir.cetak.masuk', $item->id) }}" target="_blank" class="btn btn-sm btn-info text-white" title="Cetak Tiket"><i class="fas fa-print"></i></a>
-                                            <button class="btn btn-sm btn-danger" onclick="pilihTiket('{{ $item->kode_tiket }}')" title="Proses Keluar">
+                                            <a href="{{ route('parkir.edit', $item->id) }}" class="btn btn-sm btn-warning text-white"><i class="fas fa-edit"></i></a>
+                                            <a href="{{ route('parkir.cetak.masuk', $item->id) }}" target="_blank" class="btn btn-sm btn-info text-white"><i class="fas fa-print"></i></a>
+                                            <button class="btn btn-sm btn-danger" 
+                                                    onclick="pilihTiket('{{ $item->kode_tiket }}', '{{ $item->jenis }}', '{{ $item->waktu_masuk }}')">
                                                 Keluar <i class="fas fa-arrow-up"></i>
                                             </button>
                                         </div>
@@ -281,7 +286,7 @@
                                                 @csrf @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
                                             </form>
-                                            <a href="{{ route('parkir.cetak.keluar', $data->id) }}" target="_blank" class="btn btn-sm btn-dark" title="Cetak Nota"><i class="fas fa-receipt"></i></a>
+                                            <a href="{{ route('parkir.cetak.keluar', $data->id) }}" target="_blank" class="btn btn-sm btn-dark"><i class="fas fa-receipt"></i></a>
                                         </div>
                                     </td>
                                 </tr>
@@ -297,27 +302,49 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Fungsi untuk mempercepat input nominal
-    function setBayar(amount) {
-        document.getElementById('inputBayar').value = amount;
-    }
-
-    // Fungsi otomatis mengisi kode tiket saat klik tombol "Keluar" di tabel
-    function pilihTiket(kode) {
+    // Fungsi Hitung Estimasi Tagihan Otomatis
+    function pilihTiket(kode, jenis, waktuMasuk) {
         document.getElementById('inputKode').value = kode;
+        
+        // Logika hitung durasi & tarif
+        let tglMasuk = new Date(waktuMasuk);
+        let tglSekarang = new Date();
+        let selisihMs = tglSekarang - tglMasuk;
+        
+        // Konversi ke jam (minimal 1 jam)
+        let selisihJam = Math.ceil(selisihMs / (1000 * 60 * 60)); 
+        if (selisihJam <= 0) selisihJam = 1;
+
+        let tarifPerJam = (jenis === 'mobil') ? 5000 : 2000;
+        let totalTagihan = selisihJam * tarifPerJam;
+
+        // Update Tampilan UI Tagihan
+        document.getElementById('displayTagihan').innerText = "Rp " + totalTagihan.toLocaleString('id-ID');
+        document.getElementById('inputBayar').value = totalTagihan; 
+        
+        // Tampilkan info detail
+        let detail = document.getElementById('infoDetailTarif');
+        detail.style.display = 'block';
+        detail.innerHTML = `<i class="fas fa-clock"></i> Durasi: ${selisihJam} Jam (${jenis.toUpperCase()} x Rp ${tarifPerJam.toLocaleString('id-ID')})`;
+
+        // Scroll ke form & Fokus ke Plat Nomor
         document.getElementById('inputPlat').focus();
         document.getElementById('pembayaran-section').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Fungsi untuk menampilkan loading pada tombol agar user tahu proses sedang berjalan
+    function setBayar(amount) {
+        document.getElementById('inputBayar').value = amount;
+    }
+
     function showLoading(form) {
         const btn = form.querySelector('.btn-submit');
         btn.classList.add('btn-loading');
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
     }
 
-    // Menghilangkan alert otomatis setelah 4 detik
+    // Auto-close Alerts
     setTimeout(function() {
         let alerts = document.querySelectorAll('.alert-dismissible');
         alerts.forEach(function(alert) {
@@ -326,6 +353,5 @@
         });
     }, 4000);
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
